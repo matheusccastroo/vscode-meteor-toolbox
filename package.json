@@ -1,7 +1,7 @@
 {
     "name": "meteor-toolbox",
     "displayName": "Meteor Toolbox",
-    "description": "Easily set up your Meteor environment (intelisense, run options and, hopefully, many other things in the future).",
+    "description": "Easily set up your Meteor environment (intelisense, run options and many other things).",
     "version": "1.1.0",
     "private": "true",
     "publisher": "meteor-toolbox",

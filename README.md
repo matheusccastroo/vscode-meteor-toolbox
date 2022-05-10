@@ -2,7 +2,7 @@
 
 Extension to enable intelisense for Meteor core, added packages and custom packages. Also adds launch configurations for the browser (run/debug).
 
-The packages watcher is made from [meteor-package-intellisense](https://github.com/mattblackdev/meteor-package-intellisense).
+The packages watcher is inspired on [meteor-package-intellisense](https://github.com/mattblackdev/meteor-package-intellisense).
 
 ## Usage
 
