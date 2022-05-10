@@ -21,7 +21,7 @@ const JSCONFIG = {
 const BASE_LAUNCH_CONFIG = () => {
     const portToUse = workspace
         .getConfiguration()
-        .get("conf.settingsEditor.meteorTools.port");
+        .get("conf.settingsEditor.meteorToolbox.port");
 
     return {
         version: "0.2.0",
