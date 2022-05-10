@@ -27,3 +27,30 @@ This extension only runs inside a Meteor project.
 ## Extension Settings
 
 You can toggle the file watcher for the packages by running the command `Toggle Meteor Toolbox Auto Run` (it is enabled by default).
+
+## Authors
+
+<div>
+  <table>
+  <tr>
+    <td valign="top">
+      <a href="https://github.com/matheusccastroo/">
+ <img style="border-radius: 50%;" src="https://avatars.githubusercontent.com/u/48069682?v=4" width="100px;" alt=""/>
+ <br />
+ <sub><b>Matheus Castro</b></sub></a> 
+     <br />
+    <a href="https://github.com/matheusccastroo" title="Github"><img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white"/></a>
+    </td>
+    <td valign="top">
+      <a href="https://github.com/renanccastro/">
+ <img style="border-radius: 50%;" src="https://avatars.githubusercontent.com/u/3637255?v=4" width="100px;" alt=""/>
+ <br />
+ <sub><b>Renan Castro</b></sub></a>
+    <br />
+    <a href="https://github.com/renanccastro" title="Github"><img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white"/></a>
+    </td>
+  </tr>
+</table>
+
+</div>
+
