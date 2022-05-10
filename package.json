@@ -1,0 +1,114 @@
+{
+    "name": "meteor-toolbox",
+    "displayName": "Meteor Toolbox",
+    "description": "Easily set up your Meteor environment (intelisense, run options and, hopefully, many other things in the future).",
+    "version": "1.0.0",
+    "private": "true",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Matheus Castro"
+        },
+        {
+            "name": "Renan Castro"
+        }
+    ],
+    "icon": "images/icon.png",
+    "engines": {
+        "vscode": "^1.66.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/matheusccastroo/vscode-meteor-toolbox.git"
+    },
+    "bugs": {
+        "url": "https://github.com/matheusccastroo/vscode-meteor-toolbox/issues"
+    },
+    "categories": [
+        "Other"
+    ],
+    "keywords": [
+        "meteor",
+        "intelisense",
+        "atmosphere",
+        "packages"
+    ],
+    "activationEvents": [
+        "workspaceContains:.meteor/release"
+    ],
+    "contributes": {
+        "configuration": [
+            {
+                "id": "meteorToolbox",
+                "title": "Settings for Meteor Toolbox extension",
+                "order": 2,
+                "properties": {
+                    "conf.settingsEditor.meteorToolbox": {
+                        "type": "object",
+                        "order": 2,
+                        "description": "Meteor Toolbox options.",
+                        "properties": {
+                            "auto": {
+                                "type": "boolean",
+                                "description": "Should we watch the packages folder and automatically update jsconfig.js"
+                            },
+                            "port": {
+                                "type": "string",
+                                "description": "Port to use when building run/debug options."
+                            }
+                        },
+                        "additionalProperties": false,
+                        "default": {
+                            "auto": true,
+                            "port": "3000"
+                        }
+                    }
+                }
+            }
+        ],
+        "commands": [
+            {
+                "category": "Configuration",
+                "command": "config.commands.meteorToolbox.toggleAutoRunPackagesWatcher",
+                "title": "Toggle Meteor Toolbox Auto Run"
+            },
+            {
+                "category": "Commands",
+                "command": "config.commands.meteorToolbox.runOnce",
+                "title": "Run Meteor Toolbox set up manually"
+            },
+            {
+                "category": "Commands",
+                "command": "config.commands.meteorToolbox.clearMeteorBuildCache",
+                "title": "Run clear meteor build cache"
+            },
+            {
+                "category": "Commands",
+                "command": "config.commands.meteorToolbox.regenerateLaunchJson",
+                "title": "Re-create Meteor Toolbox run options"
+            }
+        ]
+    },
+    "main": "./extension.js",
+    "scripts": {
+        "lint": "eslint .",
+        "pretest": "npm run lint",
+        "test": "node ./test/runTest.js"
+    },
+    "devDependencies": {
+        "@types/glob": "^7.2.0",
+        "@types/mocha": "^9.1.1",
+        "@types/node": "14.x",
+        "@types/vscode": "^1.66.0",
+        "@vscode/test-electron": "^2.1.3",
+        "eslint": "^8.14.0",
+        "glob": "^8.0.1",
+        "mocha": "^9.2.2",
+        "typescript": "^4.6.4"
+    },
+    "dependencies": {
+        "deepmerge": "^4.2.2",
+        "json5": "^2.2.1",
+        "lodash": "^4.17.21"
+    }
+}
