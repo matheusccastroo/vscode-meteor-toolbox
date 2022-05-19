@@ -4,6 +4,9 @@ All notable changes to the "meteor-dev" extension will be documented in this fil
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [19/05/22]
+
+- Add JSX support
+## [10/05/22]
 
 - Initial release

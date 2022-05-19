@@ -6,6 +6,9 @@ const JSCONFIG = {
     uri: "jsconfig.json",
     baseConfig: {
         compilerOptions: {
+            checkJs: true,
+            allowJs: true,
+            jsx: "react",        
             baseUrl: ".",
             paths: {
                 ["/*"]: ["./*"],
