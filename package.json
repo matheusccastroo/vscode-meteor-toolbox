@@ -56,12 +56,17 @@
                             "port": {
                                 "type": "string",
                                 "description": "Port to use when building run/debug options."
+                            },
+                            "additionalArgs": {
+                                "type": "string",
+                                "description": "Additional arguments to pass to meteor run/debug commands."
                             }
                         },
                         "additionalProperties": false,
                         "default": {
                             "auto": true,
-                            "port": "3000"
+                            "port": "3000",
+                            "additionalArgs": null
                         }
                     }
                 }
@@ -86,7 +91,7 @@
             {
                 "category": "Commands",
                 "command": "config.commands.meteorToolbox.regenerateLaunchJson",
-                "title": "Re-create Meteor Toolbox run options"
+                "title": "Re-create Meteor Toolbox run/debug options"
             }
         ]
     },

@@ -8,7 +8,7 @@ const JSCONFIG = {
         compilerOptions: {
             checkJs: true,
             allowJs: true,
-            jsx: "react",        
+            jsx: "react",
             baseUrl: ".",
             paths: {
                 ["/*"]: ["./*"],
@@ -26,6 +26,12 @@ const BASE_LAUNCH_CONFIG = () => {
         .getConfiguration()
         .get("conf.settingsEditor.meteorToolbox.port");
 
+    const additionalArgs =
+        workspace
+            .getConfiguration()
+            .get("conf.settingsEditor.meteorToolbox.additionalArgs")
+            ?.split(" ") || [];
+
     return {
         version: "0.2.0",
         configurations: [
@@ -36,14 +42,20 @@ const BASE_LAUNCH_CONFIG = () => {
                 runtimeExecutable: "meteor",
                 outputCapture: "std",
                 noDebug: "true",
-                runtimeArgs: ["run", "--port", portToUse],
+                runtimeArgs: ["run", "--port", portToUse, ...additionalArgs],
             },
             {
                 type: "node",
                 request: "launch",
                 name: "Meteor: Debug",
                 runtimeExecutable: "meteor",
-                runtimeArgs: ["run", "--port", portToUse, "--inspect-brk"],
+                runtimeArgs: [
+                    "run",
+                    "--port",
+                    portToUse,
+                    ...additionalArgs,
+                    "--inspect-brk",
+                ],
                 outputCapture: "std",
                 serverReadyAction: {
                     pattern: "App running at: http://localhost:([0-9]+)/",
