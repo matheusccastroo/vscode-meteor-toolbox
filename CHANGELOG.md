@@ -6,7 +6,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [19/05/22]
 
-- Add JSX support
+-   Add JSX support
+-   Add additional arguments options to `launch.json`.
+
 ## [10/05/22]
 
-- Initial release
+-   Initial release
