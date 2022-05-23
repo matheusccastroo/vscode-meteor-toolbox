@@ -107,67 +107,84 @@ async function addImportedPackagesToJsConfig() {
 }
 
 async function addCustomPackageOptionsToJsConfig() {
-    // Find all the local package.js files inside /packages folder
-    const packageFileURIs = await workspace.findFiles("packages/**/package.js");
+    const meteorPackageDirsFromExtensionConfig = workspace
+        .getConfiguration()
+        .get("conf.settingsEditor.meteorToolbox.meteorPackageDirs")
+        ?.split(";")
+        ?.map((dir) => `${dir}/**/package.js`);
 
-    const packageCodeAndPaths = await Promise.all(
-        packageFileURIs.map(async (pkgUri) => {
-            const fileContent = await workspace.fs.readFile(pkgUri);
-            const fileContentAsString = new TextDecoder().decode(fileContent);
+    const dirsToLook = [
+        "packages/**/package.js",
+        ...(meteorPackageDirsFromExtensionConfig || []),
+    ];
 
-            return {
-                code: fileContentAsString,
-                packagePath: workspace.asRelativePath(
-                    path.parse(pkgUri.fsPath).dir
-                ),
-            };
-        })
-    );
+    for (const directory of dirsToLook) {
+        // Find all the local package.js files inside dirs folder
+        const packageFileURIs = await workspace.findFiles(directory);
 
-    if (!packageCodeAndPaths || !packageCodeAndPaths.length) {
-        window.showWarningMessage(
-            "Could not find any local meteor packages in /packages"
-        );
-        return;
-    }
-
-    const paths = packageCodeAndPaths
-        .map(({ code, packagePath }) => {
-            const sandbox = {
-                Package: new PackageSpy(),
-                Npm,
-                Cordova,
-                Plugin,
-            };
-
-            vm.createContext(sandbox);
-            vm.runInContext(code, sandbox);
-
-            const key = `meteor/${sandbox.Package.name}`;
-            const value = sandbox.Package.mainModules.map((modulePath) =>
-                path.join(packagePath, modulePath)
+        if (!packageFileURIs.length) {
+            window.showWarningMessage(
+                `Could not find any local meteor package in ${
+                    directory.split("/")[0]
+                }`
             );
+            continue;
+        }
 
-            return {
-                key,
-                value,
-            };
-        })
-        .filter(({ value }) => value.length > 0)
-        .reduce((acc, { key, value }) => {
-            acc[key] = value;
-            return acc;
-        }, {});
+        const packageCodeAndPaths = await Promise.all(
+            packageFileURIs.map(async (pkgUri) => {
+                const fileContent = await workspace.fs.readFile(pkgUri);
+                const fileContentAsString = new TextDecoder().decode(
+                    fileContent
+                );
 
-    const resolvedPath = path.resolve(
-        workspace.workspaceFolders[0].uri.path,
-        JSCONFIG.uri
-    );
-    await appendToExistingFile(
-        { compilerOptions: { paths: { ...paths } } },
-        Uri.file(resolvedPath),
-        dontMerge
-    );
+                return {
+                    code: fileContentAsString,
+                    packagePath: workspace.asRelativePath(
+                        path.parse(pkgUri.fsPath).dir
+                    ),
+                };
+            })
+        );
+
+        const paths = packageCodeAndPaths
+            .map(({ code, packagePath }) => {
+                const sandbox = {
+                    Package: new PackageSpy(),
+                    Npm,
+                    Cordova,
+                    Plugin,
+                };
+
+                vm.createContext(sandbox);
+                vm.runInContext(code, sandbox);
+
+                const key = `meteor/${sandbox.Package.name}`;
+                const value = sandbox.Package.mainModules.map((modulePath) =>
+                    path.join(packagePath, modulePath)
+                );
+
+                return {
+                    key,
+                    value,
+                };
+            })
+            .filter(({ value }) => value.length > 0)
+            .reduce((acc, { key, value }) => {
+                acc[key] = value;
+                return acc;
+            }, {});
+
+        const resolvedPath = path.resolve(
+            workspace.workspaceFolders[0].uri.path,
+            JSCONFIG.uri
+        );
+        await appendToExistingFile(
+            { compilerOptions: { paths: { ...paths } } },
+            Uri.file(resolvedPath),
+            dontMerge
+        );
+    }
 
     window.showInformationMessage(
         "Successfully added local packages to jsconfig file."

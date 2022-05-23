@@ -26,7 +26,13 @@ This extension only runs inside a Meteor project.
 
 ## Extension Settings
 
-You can toggle the file watcher for the packages by running the command `Toggle Meteor Toolbox Auto Run` (it is enabled by default).
+-   `auto` -> Enable the file watcher for local packages. You can also set this option by running the command `Toggle Meteor Toolbox Auto Run` (it is enabled by default).
+
+-   `port` -> Set the port to use for meteor run/debug. Default to 3000.
+
+-   `additionalArgs` -> Set additional args to meteor run/debug configuration. Re-create the run options when changing this setting.
+
+-   `meteorPackageDirs` -> Use a custom packages diretory.
 
 ## Authors
 
@@ -53,4 +59,3 @@ You can toggle the file watcher for the packages by running the command `Toggle 
 </table>
 
 </div>
-

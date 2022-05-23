@@ -60,13 +60,18 @@
                             "additionalArgs": {
                                 "type": "string",
                                 "description": "Additional arguments to pass to meteor run/debug commands."
+                            },
+                            "meteorPackageDirs": {
+                                "type": "string",
+                                "description": "Colon-delimited list of local package directories to look in, besides the default packages folder. The path should be relative to the current workspace."
                             }
                         },
                         "additionalProperties": false,
                         "default": {
                             "auto": true,
                             "port": "3000",
-                            "additionalArgs": null
+                            "additionalArgs": null,
+                            "meteorPackageDirs": null
                         }
                     }
                 }
