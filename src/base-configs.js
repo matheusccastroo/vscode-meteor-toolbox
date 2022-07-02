@@ -7,15 +7,13 @@ const addDebugAndRunOptions = async () => {
     const filesResults = await workspace.findFiles(".vscode/launch.json");
     const fileUri = filesResults[0];
 
+    const baseConfig = BASE_LAUNCH_CONFIG.baseConfig();
     if (!fileUri) {
-        return createFileFromScratch(
-            BASE_LAUNCH_CONFIG(),
-            ".vscode/launch.json"
-        );
+        return createFileFromScratch(baseConfig, BASE_LAUNCH_CONFIG.uri);
     }
 
     return appendToExistingFile(
-        { configurations: BASE_LAUNCH_CONFIG().configurations },
+        { configurations: baseConfig.configurations },
         fileUri,
         (target, source) => {
             return uniqBy([...source, ...target], ({ name }) => name);
