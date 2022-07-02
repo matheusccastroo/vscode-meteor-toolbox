@@ -90,14 +90,9 @@ async function addImportedPackagesToJsConfig() {
         });
     });
 
-    const resolvedPath = path.resolve(
-        workspace.workspaceFolders[0].uri.path,
-        JSCONFIG.uri
-    );
-
     await appendToExistingFile(
         { compilerOptions: { paths: { ...paths } } },
-        Uri.file(resolvedPath),
+        Uri.joinPath(workspace.workspaceFolders[0].uri, JSCONFIG.uri),
         dontMerge
     );
 
@@ -175,13 +170,9 @@ async function addCustomPackageOptionsToJsConfig() {
                 return acc;
             }, {});
 
-        const resolvedPath = path.resolve(
-            workspace.workspaceFolders[0].uri.path,
-            JSCONFIG.uri
-        );
         await appendToExistingFile(
             { compilerOptions: { paths: { ...paths } } },
-            Uri.file(resolvedPath),
+            Uri.joinPath(workspace.workspaceFolders[0].uri, JSCONFIG.uri),
             dontMerge
         );
     }

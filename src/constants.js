@@ -21,50 +21,58 @@ const JSCONFIG = {
     },
 };
 
-const BASE_LAUNCH_CONFIG = () => {
-    const portToUse = workspace
-        .getConfiguration()
-        .get("conf.settingsEditor.meteorToolbox.port");
-
-    const additionalArgs =
-        workspace
+const BASE_LAUNCH_CONFIG = {
+    uri: ".vscode/launch.json",
+    baseConfig: () => {
+        const portToUse = workspace
             .getConfiguration()
-            .get("conf.settingsEditor.meteorToolbox.additionalArgs")
-            ?.split(" ") || [];
+            .get("conf.settingsEditor.meteorToolbox.port");
 
-    return {
-        version: "0.2.0",
-        configurations: [
-            {
-                type: "node",
-                request: "launch",
-                name: "Meteor: Run",
-                runtimeExecutable: "meteor",
-                outputCapture: "std",
-                noDebug: "true",
-                runtimeArgs: ["run", "--port", portToUse, ...additionalArgs],
-            },
-            {
-                type: "node",
-                request: "launch",
-                name: "Meteor: Debug",
-                runtimeExecutable: "meteor",
-                runtimeArgs: [
-                    "run",
-                    "--port",
-                    portToUse,
-                    ...additionalArgs,
-                    "--inspect-brk",
-                ],
-                outputCapture: "std",
-                serverReadyAction: {
-                    pattern: "App running at: http://localhost:([0-9]+)/",
-                    uriFormat: "http://localhost:%s",
-                    action: "debugWithChrome",
+        const additionalArgs =
+            workspace
+                .getConfiguration()
+                .get("conf.settingsEditor.meteorToolbox.additionalArgs")
+                ?.split(" ") || [];
+
+        return {
+            version: "0.2.0",
+            configurations: [
+                {
+                    type: "node",
+                    request: "launch",
+                    name: "Meteor: Run",
+                    runtimeExecutable: "meteor",
+                    outputCapture: "std",
+                    noDebug: "true",
+                    runtimeArgs: [
+                        "run",
+                        "--port",
+                        portToUse,
+                        ...additionalArgs,
+                    ],
                 },
-            },
-        ],
-    };
+                {
+                    type: "node",
+                    request: "launch",
+                    name: "Meteor: Debug",
+                    runtimeExecutable: "meteor",
+                    runtimeArgs: [
+                        "run",
+                        "--port",
+                        portToUse,
+                        ...additionalArgs,
+                        "--inspect-brk",
+                    ],
+                    outputCapture: "std",
+                    serverReadyAction: {
+                        pattern: "App running at: http://localhost:([0-9]+)/",
+                        uriFormat: "http://localhost:%s",
+                        action: "debugWithChrome",
+                    },
+                },
+            ],
+        };
+    },
 };
 
 module.exports = {

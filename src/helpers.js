@@ -6,7 +6,7 @@ const merge = require("deepmerge");
 const path = require("path");
 
 const writeToFile = async (data, targetUri) => {
-    const path = targetUri.path;
+    const path = targetUri.fsPath;
     try {
         await workspace.fs.writeFile(targetUri, data);
         console.log(`Successfully wrote to file ${path}!`);
@@ -17,19 +17,20 @@ const writeToFile = async (data, targetUri) => {
 
 const createFileFromScratch = async (data, targetPath) => {
     console.log(`${targetPath} does not exists, creating one...`);
-    const resolvedPath = path.resolve(
-        workspace.workspaceFolders[0].uri.path,
+
+    const resolvedUri = Uri.joinPath(
+        workspace.workspaceFolders[0].uri,
         targetPath
     );
 
     const baseConfigAsString = JSON.stringify(data, null, 2);
     const encodedBaseConfig = new TextEncoder().encode(baseConfigAsString);
 
-    return writeToFile(encodedBaseConfig, Uri.file(resolvedPath));
+    return writeToFile(encodedBaseConfig, resolvedUri);
 };
 
 const appendToExistingFile = async (dataObject, targetUri, arrayMergeMode) => {
-    console.log(`${targetUri.path} exists, appending needed info.`);
+    console.log(`${targetUri.fsPath} exists, appending needed info.`);
 
     const existingFileContent = await workspace.fs.readFile(targetUri);
     const existingDecodedConfig = json5.parse(
@@ -42,7 +43,7 @@ const appendToExistingFile = async (dataObject, targetUri, arrayMergeMode) => {
 
     if (isEqual(existingDecodedConfig, newConfig)) {
         console.log(
-            `Generated configs are equal to existing ones for file: ${targetUri.path}. No work to do.`
+            `Generated configs are equal to existing ones for file: ${targetUri.fsPath}. No work to do.`
         );
         return;
     }
