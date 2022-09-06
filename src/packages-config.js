@@ -40,31 +40,36 @@ async function addImportedPackagesToJsConfig() {
             });
         });
 
-    const packageCodeAndPaths = await Promise.all(
-        packagesToLoad.map(async (p) => {
-            const homePath = isWindows()
-                ? process.env.LOCALAPPDATA
-                : process.env.HOME;
+    const packageCodeAndPaths = (
+        await Promise.all(
+            packagesToLoad.map(async (p) => {
+                const homePath = isWindows()
+                    ? process.env.LOCALAPPDATA
+                    : process.env.HOME;
 
-            const packagePath = `${homePath}/.meteor/packages/${p}/${versionMap[p].version}`;
-            const obj = {};
+                const packagePath = `${homePath}/.meteor/packages/${p}/${versionMap[p].version}`;
+                const obj = {};
 
-            for (const arch of METEOR_ARCHS) {
-                const code = await fsPromises.readFile(
-                    `${packagePath}/${arch}.json`,
-                    "utf-8"
-                );
+                for (const arch of METEOR_ARCHS) {
+                    try {
+                        const code = await fsPromises.readFile(
+                            `${packagePath}/${arch}.json`,
+                            "utf-8"
+                        );
+                        obj[arch] = json5.parse(code);
+                    } catch (e) {
+                        return null;
+                    }
+                }
 
-                obj[arch] = json5.parse(code);
-            }
-
-            return {
-                obj,
-                packageName: `meteor/${versionMap[p].packageName}`,
-                packagePath: `${packagePath}/web.browser`,
-            };
-        })
-    );
+                return {
+                    obj,
+                    packageName: `meteor/${versionMap[p].packageName}`,
+                    packagePath: `${packagePath}/web.browser`,
+                };
+            })
+        )
+    ).filter((o) => o);
     const paths = {};
 
     packageCodeAndPaths.forEach(({ obj, packageName, packagePath }) => {
