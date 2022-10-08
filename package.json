@@ -98,6 +98,30 @@
                 "command": "config.commands.meteorToolbox.regenerateLaunchJson",
                 "title": "Re-create Meteor Toolbox run/debug options"
             }
+        ],
+        "languages": [
+            {
+                "id": "spacebars",
+                "aliases": [
+                    "Spacebars",
+                    "spacebars"
+                ],
+                "extensions": [
+                    ".html"
+                ],
+                "icon": {
+                    "light": "./images/blaze-icon.png",
+                    "dark": "./images/blaze-icon.png"
+                },
+                "configuration": "./spacebars/language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "spacebars",
+                "scopeName": "text.html.spacebars",
+                "path": "./spacebars/syntaxes/spacebars.tmLanguage.json"
+            }
         ]
     },
     "main": "./extension.js",
