@@ -11,7 +11,7 @@
 			"name": "Attach to Server",
 			"port": 6009,
 			"restart": true,
-			"outFiles": ["${workspaceRoot}/spacebars/server/out/**/*.js"]
+			"outFiles": ["${workspaceRoot}/server/src/*.js"]
 		},
 		{
 			"name": "Run Extension",
@@ -29,6 +29,12 @@
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--extensionTestsPath=${workspaceFolder}/test/suite/index"
 			]
+		}
+	],
+	"compounds": [
+		{
+			"name": "Client + Server",
+			"configurations": ["Run Extension", "Attach to Server"]
 		}
 	]
 }
