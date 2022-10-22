@@ -1,4 +1,4 @@
-import { HTML } from 'meteor/htmljs';
+import { HTML } from '../html';
 import { TreeTransformer, toRaw } from './optimizer';
 
 function compactRaw(array){
