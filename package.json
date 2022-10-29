@@ -134,7 +134,7 @@
         "run:spacebars": "tsc -b -w",
         "vscode:prepublish": "npm run compile",
 		"compile": "tsc -b",
-        "postinstall": "cd spacebars/server && npm install && cd ../.."
+        "postinstall": "cd server && npm install && cd ../.."
     },
     "devDependencies": {
         "@types/glob": "^7.2.0",

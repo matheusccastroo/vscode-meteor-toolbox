@@ -1,6 +1,6 @@
-import { HTMLTools } from 'meteor/html-tools';
-import { HTML } from 'meteor/htmljs';
-import { BlazeTools } from 'meteor/blaze-tools';
+import { HTMLTools } from '../html-tools/main';
+import { HTML } from '../html';
+import { BlazeTools } from '../blaze-tools/preamble';
 
 // A visitor to ensure that React components included via the `{{>
 // React}}` template defined in the react-template-helper package are

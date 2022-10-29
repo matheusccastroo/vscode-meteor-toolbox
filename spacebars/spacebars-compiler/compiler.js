@@ -1,17 +1,13 @@
-import { Meteor } from 'meteor/meteor';
-import { HTMLTools } from 'meteor/html-tools';
-import { HTML } from 'meteor/htmljs';
-import { BlazeTools } from 'meteor/blaze-tools';
+import { HTMLTools } from '../html-tools/main';
+import { HTML } from '../html';
+import { BlazeTools } from '../blaze-tools/preamble';
 import { CodeGen } from './codegen';
 import { optimize } from './optimizer';
 import { ReactComponentSiblingForbidder} from './react';
 import { TemplateTag } from './templatetag';
 import { removeWhitespace } from './whitespace';
 
-var UglifyJSMinify = null;
-if (Meteor.isServer) {
-  UglifyJSMinify = Npm.require('uglify-js').minify;
-}
+var UglifyJSMinify = require('uglify-js').minify;
 
 export function parse(input) {
   return HTMLTools.parseFragment(

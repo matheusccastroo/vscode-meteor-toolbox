@@ -1,5 +1,5 @@
-import { HTMLTools } from 'meteor/html-tools';
-import { HTML } from 'meteor/htmljs';
+import { HTMLTools } from '../html-tools/main';
+import { HTML } from '../html';
 
 // Optimize parts of an HTMLjs tree into raw HTML strings when they don't
 // contain template tags.
