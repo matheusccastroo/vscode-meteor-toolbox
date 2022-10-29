@@ -2,7 +2,6 @@ const {
     createConnection,
     ProposedFeatures,
     TextDocumentSyncKind,
-    TextDocument,
 } = require("vscode-languageserver/node");
 const { DefinitionProvider } = require("./definition-provider");
 
@@ -11,7 +10,7 @@ class ServerInstance {
         // Create a connection for the server, using Node's IPC as a transport.
         // Also include all preview / proposed LSP features.
         this.connection = createConnection(ProposedFeatures.all);
-        this.definitionProvider = new DefinitionProvider(this);
+        this.definitionProvider = new DefinitionProvider(this.connection);
 
         this.connection.onInitialize(() => ({
             capabilities: {
@@ -24,8 +23,8 @@ class ServerInstance {
             },
         }));
 
-        this.connection.onDefinition(
-            this.definitionProvider.onDefinitionRequest
+        this.connection.onDefinition((...params) =>
+            this.definitionProvider.onDefinitionRequest(...params)
         );
         this.connection.listen();
     }
