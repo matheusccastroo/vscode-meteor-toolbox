@@ -118,16 +118,19 @@ function activate(context) {
         }
     );
 
+    console.log("Connecting to language server...");
+    const serverConnectionDisposable = connectToLanguageServer(
+        context.asAbsolutePath
+    );
+
     context.subscriptions.push(
         toggleAutoRunPackagesWatcherDisposable,
         runOnceDisposable,
         restartDisposer,
         clearMeteorBuildCacheDisposable,
-        regenerateLaunchJsonDisposable
+        regenerateLaunchJsonDisposable,
+        serverConnectionDisposable
     );
-
-    console.log("Connecting to language server...");
-    connectToLanguageServer(context.asAbsolutePath);
 }
 
 // this method is called when your extension is deactivated
