@@ -1,12 +1,13 @@
 const { ServerBase } = require("./helpers");
 
 class DefinitionProvider extends ServerBase {
-    constructor(serverInstance) {
-        super(serverInstance);
+    constructor(serverInstance, documentsInstance) {
+        super(serverInstance, documentsInstance);
     }
 
-    onDefinitionRequest(params) {
-        console.log(params);
+    onDefinitionRequest({ position, textDocument: { uri } }) {
+        const textContent = this.getFileContent(uri);
+        console.log(textContent);
     }
 }
 

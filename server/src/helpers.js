@@ -4,8 +4,9 @@ class ServerBase {
         JS_TEMPLATE: ".js",
     };
 
-    constructor(serverInstance) {
+    constructor(serverInstance, documentsInstance) {
         this.serverInstance = serverInstance;
+        this.documentsInstance = documentsInstance;
     }
 
     parseUri(uri) {
@@ -40,14 +41,20 @@ class ServerBase {
         );
     };
 
-    getFileContent(_uri) {
+    getFileContent(_uri, range) {
         if (!this.serverInstance) {
             throw new Error("Server instance is required to get file content");
         }
 
+        if (!this.documentsInstance) {
+            throw new Error(
+                "Documents instance is required to get file content"
+            );
+        }
+
         const uri = this.parseUri(_uri);
 
-        return this.serverInstance.documents.get(uri);
+        return this.documentsInstance.get(uri).getText(range);
     }
 }
 
