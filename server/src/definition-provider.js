@@ -7,7 +7,21 @@ class DefinitionProvider extends ServerBase {
 
     onDefinitionRequest({ position, textDocument: { uri } }) {
         const textContent = this.getFileContent(uri);
-        console.log(textContent);
+        const symbolClicked = this.getSymbolAtPosition(position, uri);
+
+        if (!symbolClicked || symbolClicked.length <= 0) {
+            return;
+        }
+
+        if (this.isFileSpacebarsHTML(uri)) {
+            const {
+                SpacebarsCompiler,
+            } = require("@blastjs/spacebars-compiler");
+
+            const parsed = SpacebarsCompiler.parse(textContent);
+            console.log(parsed);
+            console.log(symbolClicked);
+        }
     }
 }
 

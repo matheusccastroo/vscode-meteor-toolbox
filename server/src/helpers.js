@@ -56,6 +56,30 @@ class ServerBase {
 
         return this.documentsInstance.get(uri).getText(range);
     }
+
+    getSymbolAtPosition(position, documentUri, _tokenSeparator) {
+        const tokenSeparator = _tokenSeparator || /[\s\{>}"]/;
+
+        const range = {
+            start: { line: position.line, character: 0 },
+            end: { line: position.line, character: Number.MAX_SAFE_INTEGER },
+        };
+
+        const content = this.getFileContent(documentUri, range);
+        const offset = position.character;
+
+        let start = offset - 1;
+        while (start > 0 && !content[start].match(tokenSeparator)) {
+            start--;
+        }
+
+        let end = offset;
+        while (end < content.length && !content[end].match(tokenSeparator)) {
+            end++;
+        }
+
+        return content.substr(start + 1, end - start - 1);
+    }
 }
 
 module.exports = {
