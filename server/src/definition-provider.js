@@ -7,20 +7,26 @@ class DefinitionProvider extends ServerBase {
 
     onDefinitionRequest({ position, textDocument: { uri } }) {
         const textContent = this.getFileContent(uri);
-        const symbolClicked = this.getSymbolAtPosition(position, uri);
-
-        if (!symbolClicked || symbolClicked.length <= 0) {
-            return;
-        }
 
         if (this.isFileSpacebarsHTML(uri)) {
-            const {
-                SpacebarsCompiler,
-            } = require("@blastjs/spacebars-compiler");
+            const { parse } = require("@handlebars/parser");
+            const { AstWalker, NODE_TYPES } = require("./ast-helpers");
 
-            const parsed = SpacebarsCompiler.parse(textContent);
-            console.log(parsed);
-            console.log(symbolClicked);
+            const walker = new AstWalker(textContent, parse);
+            const symbol = walker.getSymbolAtPosition(position);
+
+            if (!symbol) {
+                console.warn("Symbol not found");
+                return;
+            }
+
+            if (walker.isPartialStatement(symbol)) {
+                return;
+            }
+
+            if (walker.isMustacheStatement(symbol)) {
+                return;
+            }
         }
     }
 }
