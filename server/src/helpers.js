@@ -10,11 +10,13 @@ class ServerBase {
     }
 
     parseUri(uri) {
-        if (!uri || typeof uri !== "string") {
-            throw new Error(`Wrong parameter URI. Received: ${uri}`);
+        if (!uri) {
+            throw new Error("Missing URI parameter");
         }
+
         const { URI } = require("vscode-uri");
-        return URI.parse(uri);
+
+        return uri instanceof URI ? uri : URI.parse(uri);
     }
 
     getFileExtension(uri) {
@@ -54,10 +56,20 @@ class ServerBase {
 
         const uri = this.parseUri(_uri);
 
-        return this.documentsInstance.get(uri).getText(range);
+        const fromDocumentInstance = this.documentsInstance.get(uri);
+        if (!!fromDocumentInstance) {
+            return fromDocumentInstance.getText(range);
+        }
+
+        return require("fs").readFileSync(uri.fsPath).toString();
     }
 }
 
+const TAG_NAMES = {
+    TEMPLATE: "template",
+};
+
 module.exports = {
     ServerBase,
+    TAG_NAMES,
 };

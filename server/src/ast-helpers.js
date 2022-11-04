@@ -4,11 +4,11 @@ const createPositionObject = (position) => ({
 });
 
 class AstWalker {
-    constructor(textContent, parserFn) {
+    constructor(textContent, parserFn, options) {
         this.shouldStop = false;
 
         if (textContent && parserFn) {
-            this.ast = parserFn(textContent);
+            this.ast = parserFn(textContent, options);
         }
     }
 
@@ -16,7 +16,7 @@ class AstWalker {
         const position = createPositionObject(_position);
 
         let symbol;
-        this.walk(this.ast, (node) => {
+        this.walkUntil((node) => {
             if (node.loc && this.isSymbolInPositionRange(position, node.loc)) {
                 symbol = node;
                 this.stopWalking();
@@ -32,7 +32,7 @@ class AstWalker {
         return containsInLine && containsInColumn;
     }
 
-    walk(node, callback) {
+    _walk(node, callback) {
         if (this.shouldStop) return;
 
         if (this.isNode(node)) callback(node);
@@ -42,17 +42,23 @@ class AstWalker {
 
             const v = node[k];
             if (this.isNode(v)) {
-                this.walk(v, callback);
+                this._walk(v, callback);
             }
 
             if (Array.isArray(v)) {
                 v.forEach((n) => {
                     if (!this.isNode(n)) return;
 
-                    this.walk(n, callback);
+                    this._walk(n, callback);
                 });
             }
         }
+    }
+
+    walkUntil(callback) {
+        if (this.shouldStop) this.shouldStop = false;
+
+        this._walk(this.ast, callback);
     }
 
     stopWalking() {
@@ -94,10 +100,26 @@ const NODE_TYPES = {
     // {{#each a}}{{/each}}
     BLOCK_STATEMENT: "BlockStatement",
     PATH_EXPRESSION: "PathExpression",
+    CONTENT_STATEMENT: "ContentStatement",
+    IDENTIFIER: "Identifier",
+    MEMBER_EXPRESSION: "MemberExpression",
+};
+
+const NODE_NAMES = {
+    TEMPLATE: "Template",
+};
+
+const DEFAULT_ACORN_OPTIONS = {
+    allowImportExportEverywhere: true,
+    ecmaVersion: 7,
+    sourceType: "module",
+    allowHashBang: true,
 };
 
 module.exports = {
     createPositionObject,
     AstWalker,
     NODE_TYPES,
+    DEFAULT_ACORN_OPTIONS,
+    NODE_NAMES,
 };

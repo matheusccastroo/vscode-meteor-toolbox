@@ -37,7 +37,7 @@
     "activationEvents": [
         "workspaceContains:.meteor/release",
         "onLanguage:spacebars",
-		"onLanguage:javascript"
+        "onLanguage:javascript"
     ],
     "contributes": {
         "configuration": [
@@ -133,7 +133,7 @@
         "test": "node ./test/runTest.js",
         "run:spacebars": "tsc -b -w",
         "vscode:prepublish": "npm run compile",
-		"compile": "tsc -b",
+        "compile": "tsc -b",
         "postinstall": "cd server && npm install && cd ../.."
     },
     "devDependencies": {
@@ -145,12 +145,12 @@
         "eslint": "^8.14.0",
         "glob": "^8.0.1",
         "mocha": "^9.2.2",
-		"typescript": "^4.8.4"
+        "typescript": "^4.8.4"
     },
     "dependencies": {
-        "vscode-languageclient": "8.0.2",
         "deepmerge": "^4.2.2",
         "json5": "^2.2.1",
-        "lodash": "^4.17.21"
+        "lodash": "^4.17.21",
+        "vscode-languageclient": "8.0.2"
     }
 }
