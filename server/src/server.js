@@ -14,21 +14,26 @@ class ServerInstance {
         this.connection = createConnection(ProposedFeatures.all);
         this.documents = new TextDocuments(TextDocument);
 
-        this.definitionProvider = new DefinitionProvider(
-            this.connection,
-            this.documents
-        );
+        this.connection.onInitialize((params) => {
+            this.rootUri = params.rootUri;
 
-        this.connection.onInitialize(() => ({
-            capabilities: {
-                textDocumentSync: TextDocumentSyncKind.Incremental,
+            this.definitionProvider = new DefinitionProvider(
+                this.connection,
+                this.documents,
+                this.rootUri
+            );
 
-                definitionProvider: true,
-                completionProvider: {
-                    resolveProvider: true,
+            return {
+                capabilities: {
+                    textDocumentSync: TextDocumentSyncKind.Incremental,
+
+                    definitionProvider: true,
+                    completionProvider: {
+                        resolveProvider: true,
+                    },
                 },
-            },
-        }));
+            };
+        });
 
         this.connection.onDefinition((...params) =>
             this.definitionProvider.onDefinitionRequest(...params)

@@ -4,9 +4,10 @@ class ServerBase {
         JS_TEMPLATE: ".js",
     };
 
-    constructor(serverInstance, documentsInstance) {
+    constructor(serverInstance, documentsInstance, rootUri) {
         this.serverInstance = serverInstance;
         this.documentsInstance = documentsInstance;
+        this.rootUri = rootUri;
     }
 
     parseUri(uri) {
