@@ -1,8 +1,19 @@
+const { loadAllSources } = require("./fs");
 const { ServerBase } = require("./helpers");
 
 class DefinitionProvider extends ServerBase {
     constructor(serverInstance, documentsInstance, rootUri) {
         super(serverInstance, documentsInstance, rootUri);
+    }
+
+    async reindex(){
+        console.info(`Reindexing ${this.rootUri}`)
+        const sources = await loadAllSources(this.files)
+        console.info(
+            `* Found ${sources.length} source files`
+          )
+          //TODO: parsear todos os arquivos aqui
+      
     }
 
     onDefinitionRequest({ position, textDocument: { uri } }) {

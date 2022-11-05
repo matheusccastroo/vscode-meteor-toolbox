@@ -64,6 +64,7 @@ class ServerBase {
 
         return require("fs").readFileSync(uri.fsPath).toString();
     }
+    
 }
 
 const TAG_NAMES = {
