@@ -35,7 +35,6 @@ class Indexer extends ServerBase {
     async loadSources(globs = ["**/**{.js,.ts,.html}"]) {
         const uris = await this.findUris(globs);
 
-        console.log(uris);
         const { AstWalker, DEFAULT_ACORN_OPTIONS } = require("./ast-helpers");
         const { SpacebarsCompiler } = require("@blastjs/spacebars-compiler");
 

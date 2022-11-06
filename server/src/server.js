@@ -46,12 +46,19 @@ class ServerInstance {
                     textDocumentSync: TextDocumentSyncKind.Incremental,
 
                     definitionProvider: true,
-                    completionProvider: {
-                        resolveProvider: true,
-                    },
+                    // We don't support completion for now.
+                    // completionProvider: {
+                    //     resolveProvider: true,
+                    // },
                 },
             };
         });
+
+        // Reindex on file changes
+        this.connection.onDidChangeWatchedFiles(() =>
+            this.scheduleReindexing()
+        );
+        this.documents.onDidChangeContent(() => this.scheduleReindexing());
 
         this.connection.onDefinition((...params) =>
             this.definitionProvider.onDefinitionRequest(...params)
@@ -61,27 +68,28 @@ class ServerInstance {
         this.connection.listen();
     }
 
-    // async reindex() {
-    //     console.info(`Reindexing ${this.rootUri}`);
-    //     const sources = await loadAllSources(this.files);
-    //     console.info(`* Found ${sources.length} source files`);
-    //     //TODO: parsear todos os arquivos aqui
-    // }
+    async reindex() {
+        console.info(`* Reindexing project: ${this.rootUri}`);
+        await this.indexer.loadSources();
+        console.info("* Reindexing completed.");
+    }
 
-    // scheduleReindexing() {
-    //     clearTimeout(this.reindexingTimeout);
-    //     const timeoutMillis = 3000;
-    //     this.connection.console.info(
-    //         `Scheduling reindexing in ${timeoutMillis} ms`
-    //     );
-    //     this.reindexingTimeout = setTimeout(() => {
-    //         this.definitionProvider
-    //             .reindex()
-    //             .catch((err) =>
-    //                 console.error(`Failed to reindex: ${err.message}`)
-    //             );
-    //     }, timeoutMillis);
-    // }
+    scheduleReindexing() {
+        if (this.reindexingTimeout) {
+            clearTimeout(this.reindexingTimeout);
+        }
+
+        const timeoutMs = 3000;
+        this.connection.console.info(
+            `Scheduling reindexing in ${timeoutMs} ms`
+        );
+
+        this.reindexingTimeout = setTimeout(() => {
+            this.reindex().catch((err) =>
+                console.error(`Failed to reindex: ${err.message}`)
+            );
+        }, timeoutMs);
+    }
 }
 
 new ServerInstance();
