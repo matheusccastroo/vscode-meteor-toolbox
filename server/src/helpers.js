@@ -7,7 +7,7 @@ class ServerBase {
     constructor(serverInstance, documentsInstance, rootUri) {
         this.serverInstance = serverInstance;
         this.documentsInstance = documentsInstance;
-        this.rootUri = rootUri;
+        this.rootUri = this.parseUri(rootUri);
     }
 
     parseUri(uri) {
@@ -21,7 +21,7 @@ class ServerBase {
     }
 
     getFileExtension(uri) {
-        if (!uri || typeof uri !== "string") {
+        if (!uri) {
             throw new Error(`Wrong parameter URI. Received: ${uri}`);
         }
 
@@ -62,16 +62,35 @@ class ServerBase {
             return fromDocumentInstance.getText(range);
         }
 
-        return require("fs").readFileSync(uri.fsPath).toString();
+        return require("fs").readFileSync(uri.fsPath, { encoding: "utf-8" });
     }
-    
+
+    getFileContentPromise(_uri) {
+        if (!_uri) {
+            throw new Error("_uri is required");
+        }
+
+        // Parse to get the correct fsPath that works on all OS's.
+        const uri = this.parseUri(_uri);
+
+        return require("fs/promises").readFile(uri.fsPath, {
+            encoding: "utf-8",
+        });
+    }
 }
 
 const TAG_NAMES = {
     TEMPLATE: "template",
 };
 
+const FILE_EXTENSIONS = {
+    HTML: ".html",
+    JS: ".js",
+    TS: ".ts",
+};
+
 module.exports = {
     ServerBase,
     TAG_NAMES,
+    FILE_EXTENSIONS,
 };

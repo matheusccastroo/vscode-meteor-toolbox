@@ -1,19 +1,10 @@
-const { loadAllSources } = require("./fs");
 const { ServerBase } = require("./helpers");
 
 class DefinitionProvider extends ServerBase {
-    constructor(serverInstance, documentsInstance, rootUri) {
+    constructor(serverInstance, documentsInstance, rootUri, indexer) {
         super(serverInstance, documentsInstance, rootUri);
-    }
 
-    async reindex(){
-        console.info(`Reindexing ${this.rootUri}`)
-        const sources = await loadAllSources(this.files)
-        console.info(
-            `* Found ${sources.length} source files`
-          )
-          //TODO: parsear todos os arquivos aqui
-      
+        this.indexer = indexer;
     }
 
     onDefinitionRequest({ position, textDocument: { uri } }) {
@@ -44,6 +35,10 @@ class DefinitionProvider extends ServerBase {
             });
         }
 
+        if (htmlWalker.isMustacheStatement(htmlSymbol)) {
+            return;
+        }
+
         return;
     }
 
@@ -59,20 +54,23 @@ class DefinitionProvider extends ServerBase {
             throw new Error("Missing required parameters");
         }
 
-        const { SpacebarsCompiler } = require("@blastjs/spacebars-compiler");
-        const { TAG_NAMES } = require("./helpers");
-
-        // The HTMLJS representation that Meteor uses don't allow us to get position and etc.
-        // That's why we have to parse two times this input.
-        const HTMLjs = SpacebarsCompiler.parse(this.getFileContent(fileUri));
+        const { htmlJs } = this.indexer.getFileInfo(fileUri);
+        if (!htmlJs) {
+            throw new Error(
+                `HTML JS does not exists for file ${
+                    this.parseUri(fileUri).fsPath
+                }`
+            );
+        }
 
         const _searchValue =
             typeof templateNameOrNode === "string"
                 ? templateNameOrNode
                 : templateNameOrNode.name.original;
 
+        const { TAG_NAMES } = require("./helpers");
         // Was the template referenced declared on the same HTML file?
-        return HTMLjs.find(
+        return htmlJs.find(
             (tag) =>
                 tag.tagName === TAG_NAMES.TEMPLATE &&
                 tag.attrs.name === _searchValue
@@ -97,18 +95,9 @@ class DefinitionProvider extends ServerBase {
             return;
         }
 
-        const {
-            AstWalker,
-            NODE_NAMES,
-            NODE_TYPES,
-            DEFAULT_ACORN_OPTIONS,
-        } = require("./ast-helpers");
+        const { NODE_NAMES, NODE_TYPES } = require("./ast-helpers");
 
-        const jsWalker = new AstWalker(
-            this.getFileContent(_uri),
-            require("acorn").parse,
-            DEFAULT_ACORN_OPTIONS
-        );
+        const { astWalker: jsWalker } = this.indexer.getFileInfo(_uri);
 
         let isTemplateDefinedInJsFile = false;
         jsWalker.walkUntil((node) => {
@@ -137,12 +126,7 @@ class DefinitionProvider extends ServerBase {
 
         const { Location, Range } = require("vscode-languageserver");
 
-        const _htmlWalker =
-            htmlWalker ||
-            new AstWalker(
-                this.getFileContent(fileUri),
-                require("@handlebars/parser").parse
-            );
+        const _htmlWalker = htmlWalker || this.indexer.getFileInfo(fileUri);
 
         /**
          * If the template is not defined in the JS file of the same name,
@@ -211,41 +195,13 @@ class DefinitionProvider extends ServerBase {
          * the <template name="nameHere"> tag. If we find it, search for the JS file that implements it
          * and return it's location
          */
-        const { Utils } = require("vscode-uri");
-        const glob = require("glob");
+        const { FILE_EXTENSIONS } = require("./helpers");
+        const htmlSources = this.indexer.getSourcesOfType(FILE_EXTENSIONS.HTML);
 
-        const rootUri = this.parseUri(this.rootUri);
-        let currentDirectory = Utils.dirname(this.parseUri(uri));
+        for (const { uri } of htmlSources) {
+            if (!this.isTemplateDefinedOnHTMLFile(uri, symbol)) continue;
 
-        const goUp = () => {
-            currentDirectory = Utils.joinPath(currentDirectory, "../");
-        };
-
-        while (currentDirectory.fsPath.startsWith(rootUri.fsPath)) {
-            const htmlFilesInDirectory = glob.sync("*.html", {
-                cwd: currentDirectory.fsPath,
-            });
-
-            if (!htmlFilesInDirectory.length) {
-                goUp();
-                continue;
-            }
-
-            for (const fileName of htmlFilesInDirectory) {
-                const fileUri = Utils.joinPath(currentDirectory, fileName);
-                const fileContent = this.getFileContent(fileUri);
-
-                if (!fileContent) {
-                    continue;
-                }
-
-                if (!this.isTemplateDefinedOnHTMLFile(fileUri, symbol))
-                    continue;
-
-                return this.findTemplateDefinitionOnFile({ fileUri, symbol });
-            }
-
-            goUp();
+            return this.findTemplateDefinitionOnFile({ fileUri: uri, symbol });
         }
 
         /**
