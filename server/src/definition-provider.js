@@ -36,7 +36,11 @@ class DefinitionProvider extends ServerBase {
         }
 
         if (htmlWalker.isMustacheStatement(htmlSymbol)) {
-            return;
+            return this.handleMustacheStatement({
+                symbol: htmlSymbol,
+                htmlWalker,
+                uri,
+            });
         }
 
         return;
@@ -117,7 +121,7 @@ class DefinitionProvider extends ServerBase {
                 const nodeProperty = node.object.property;
                 const isSymbol =
                     nodeProperty.type === NODE_TYPES.IDENTIFIER &&
-                    nodeProperty.name === symbol.name.original;
+                    nodeProperty.name === (symbol.name?.original || symbol);
 
                 isTemplateDefinedInJsFile = isSymbol;
                 if (isTemplateDefinedInJsFile) jsWalker.stopWalking();
@@ -128,53 +132,49 @@ class DefinitionProvider extends ServerBase {
 
         const _htmlWalker = htmlWalker || this.indexer.getFileInfo(fileUri);
 
+        if (isTemplateDefinedInJsFile) {
+            /**
+             * If the template is defined in the JSfile with the same name as the HTML, then we are good.
+             * Just return the location of the JS file.
+             */
+            return Location.create(_uri.fsPath, Range.create(0, 0, 0, 0));
+        }
+
         /**
          * If the template is not defined in the JS file of the same name,
          * it's a template without state: in this case, we just return
          * the declaration location on the HTML file.
          */
-        if (!isTemplateDefinedInJsFile) {
-            let location;
-            _htmlWalker.walkUntil((node) => {
-                if (!node) return;
+        let location;
+        _htmlWalker.walkUntil((node) => {
+            if (!node) return;
 
-                if (
-                    node.type === NODE_TYPES.CONTENT_STATEMENT &&
-                    typeof node.original === "string"
-                ) {
-                    const valueToCheck = node.original;
-                    const symbolString = symbol.name.original;
+            if (
+                node.type === NODE_TYPES.CONTENT_STATEMENT &&
+                typeof node.original === "string"
+            ) {
+                const valueToCheck = node.original;
+                const symbolString = symbol.name.original;
 
-                    // Try with both "" and ''
-                    const includes =
-                        valueToCheck.includes(
-                            `template name="${symbolString}"`
-                        ) ||
-                        valueToCheck.includes(
-                            `template name='${symbolString}'`
-                        );
+                // Try with both "" and ''
+                const includes =
+                    valueToCheck.includes(`template name="${symbolString}"`) ||
+                    valueToCheck.includes(`template name='${symbolString}'`);
 
-                    if (!includes) return;
+                if (!includes) return;
 
-                    location = node.loc;
-                    return _htmlWalker.stopWalking();
-                }
-            });
+                location = node.loc;
+                return _htmlWalker.stopWalking();
+            }
+        });
 
-            if (!location || !location.start || !location.end) return;
+        if (!location || !location.start || !location.end) return;
 
-            const { start, end } = location;
-            return Location.create(
-                fileUri,
-                Range.create(start.line, start.column, end.line, end.column)
-            );
-        }
-
-        /**
-         * If the template is defined in the JSfile with the same name as the HTML, then we are good.
-         * Just return the location of the JS file.
-         */
-        return Location.create(_uri.fsPath, Range.create(0, 0, 0, 0));
+        const { start, end } = location;
+        return Location.create(
+            fileUri,
+            Range.create(start.line, start.column, end.line, end.column)
+        );
     }
 
     handlePartialStatement({ symbol, htmlWalker, uri }) {
@@ -208,6 +208,91 @@ class DefinitionProvider extends ServerBase {
          * Well, we tried but we didn't find anything useful.
          */
         return;
+    }
+
+    getWrappingTemplate({ uri, symbol }) {
+        const { htmlJs } = this.indexer.getFileInfo(uri);
+        if (!htmlJs) {
+            throw new Error(
+                `Expected to find htmlJs representation. Found: ${htmlJs}`
+            );
+        }
+
+        const helperName = symbol.path.original;
+        if (!helperName || typeof helperName !== "string") {
+            throw new Error(
+                `Expected to find helper name. Found: ${helperName}`
+            );
+        }
+
+        // TODO -> Improve this.
+        const visitHtmlChildren = (children) => {
+            if (!Array.isArray(children)) return;
+
+            for (const child of children) {
+                if (typeof child === "string") continue;
+
+                if (
+                    child.__proto__.constructorName ===
+                    "SpacebarsCompiler.TemplateTag"
+                ) {
+                    return child?.path?.includes(helperName) && child;
+                }
+
+                if (!!child.children?.length) {
+                    const hasResult = visitHtmlChildren(child.children);
+                    if (hasResult) return hasResult;
+                }
+            }
+        };
+
+        const { TAG_NAMES } = require("./helpers");
+        return htmlJs.find((htmlTag) => {
+            // Helpers are used only on template tags
+            if (htmlTag.tagName !== TAG_NAMES.TEMPLATE) return;
+            // If we don't have children, we are not using a helper.
+            if (!htmlTag.children.length) return;
+
+            return visitHtmlChildren(htmlTag.children);
+        });
+    }
+
+    /**
+     * We have two cases here: the helper is defined on the JS file and the case where the helper
+     * comes as an attribute and it's only referenced on the HTML.
+     *
+     * We first search by the first route and if not found, try the second.
+     */
+    handleMustacheStatement({ symbol, htmlWalker, uri }) {
+        const wrappingTemplate = this.getWrappingTemplate({ uri, symbol });
+        if (!wrappingTemplate) return;
+
+        const templateSymbol = wrappingTemplate.attrs.name;
+        if (!templateSymbol) {
+            throw new Error(
+                `Expected to find template name. Found: ${templateSymbol}`
+            );
+        }
+
+        const { uri: templateUri } = this.findTemplateDefinitionOnFile({
+            fileUri: uri,
+            symbol: templateSymbol,
+            htmlWalker,
+        });
+
+        // Means that we didn't find the template either in JS or HTML file.
+        if (!templateUri) {
+            console.warn(
+                "Template definition not found, aborting definition request."
+            );
+            return;
+        }
+
+        /**
+         * TODO:
+         * Walk on the template JS AST and find any expression (either on helpers, or template properties
+         * on the onCreated) that matches the helperName
+         */
     }
 }
 

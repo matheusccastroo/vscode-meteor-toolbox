@@ -78,7 +78,7 @@ class AstWalker {
 
     // Trying to use a helper/property from the template
     isMustacheStatement(node) {
-        return node && node.type === NODE_TYPES.PARTIAL_STATEMENT;
+        return node && node.type === NODE_TYPES.MUSTACHE_STATEMENT;
     }
 
     // Block helpers
@@ -103,6 +103,9 @@ const NODE_TYPES = {
     CONTENT_STATEMENT: "ContentStatement",
     IDENTIFIER: "Identifier",
     MEMBER_EXPRESSION: "MemberExpression",
+    EXPRESSION_STATEMENT: "ExpressionStatement",
+    OBJECT_EXPRESSION: "ObjectExpression",
+    PROPERTY: "Property",
 };
 
 const NODE_NAMES = {
