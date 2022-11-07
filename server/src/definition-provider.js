@@ -11,7 +11,32 @@ class DefinitionProvider extends ServerBase {
         if (this.isFileSpacebarsHTML(uri)) {
             return this.handleFileSpacebarsHTML({ uri, position });
         }
+        if (this.isFileSpacebarsJS(uri)) {
+            return this.handleFileSpacebarsJS({ uri, position });
+        }
         return;
+    }
+
+    handleFileSpacebarsJS({ uri, position }) {
+        const { astWalker } = this.indexer.getFileInfo(uri);
+
+        const nodeAtPosition = astWalker.getSymbolAtPosition(position);
+        if (!nodeAtPosition) return;
+        if (
+            nodeAtPosition.object.type !== "MemberExpression" ||
+            nodeAtPosition.object.object.name !== "Template"
+        )
+            return;
+        const templateNameToSearch = nodeAtPosition.object.property.name;
+        const index = this.indexer.templateIndexMap[templateNameToSearch];
+        if (!index) return;
+        const { Location, Range } = require("vscode-languageserver");
+        const { start, end } = index.node.loc;
+
+        return Location.create(
+            index.uri.path,
+            Range.create(start.line, start.column, end.line, end.column)
+        );
     }
 
     handleFileSpacebarsHTML({ uri, position }) {

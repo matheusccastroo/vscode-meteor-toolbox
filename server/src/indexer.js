@@ -56,7 +56,25 @@ class Indexer extends ServerBase {
                 // Also index the htmlJs representation.
                 const htmlJs =
                     isFileHtml && SpacebarsCompiler.parse(fileContent);
+                const { NODE_TYPES } = require("./ast-helpers");
 
+                this.templateIndexMap = this.templateIndexMap || {};
+                astWalker.walkUntil((node) => {
+                    if (!node) return;
+
+                    if (
+                        node.type === NODE_TYPES.CONTENT_STATEMENT &&
+                        typeof node.original === "string"
+                    ) {
+                        const symbolString = node.original;
+                        const regex = /template name=[\"\'](.*)[\"\']/g;
+                        const matches = regex.exec(symbolString);
+
+                        if (!matches || !matches.length) return;
+
+                        this.templateIndexMap[matches[1]] = { node, uri };
+                    }
+                });
                 return {
                     extension,
                     astWalker,
