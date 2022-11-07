@@ -106,6 +106,7 @@ const NODE_TYPES = {
     EXPRESSION_STATEMENT: "ExpressionStatement",
     OBJECT_EXPRESSION: "ObjectExpression",
     PROPERTY: "Property",
+    CALL_EXPRESSION: "CallExpression",
 };
 
 const NODE_NAMES = {
@@ -117,6 +118,7 @@ const DEFAULT_ACORN_OPTIONS = {
     ecmaVersion: 7,
     sourceType: "module",
     allowHashBang: true,
+    locations: true,
 };
 
 module.exports = {

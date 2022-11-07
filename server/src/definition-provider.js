@@ -257,12 +257,59 @@ class DefinitionProvider extends ServerBase {
         });
     }
 
-    /**
-     * We have two cases here: the helper is defined on the JS file and the case where the helper
-     * comes as an attribute and it's only referenced on the HTML.
-     *
-     * We first search by the first route and if not found, try the second.
-     */
+    findHelper(templateUri, symbol) {
+        const { astWalker } = this.indexer.getFileInfo(templateUri);
+        if (!astWalker) {
+            throw new Error(
+                `Expected astWalker to exist for ${templateUri} but got ${astWalker}`
+            );
+        }
+
+        const helperName = symbol.path.original;
+
+        const { NODE_TYPES } = require("./ast-helpers");
+        const { TEMPLATE_CALLERS } = require("./helpers");
+
+        let found;
+        // Search for the helper on the call expression, i.e Template.templateName.helpers({...});
+        astWalker.walkUntil((node) => {
+            if (!node || node.type !== NODE_TYPES.CALL_EXPRESSION) {
+                return;
+            }
+
+            const callee = node.callee;
+            if (
+                !callee ||
+                callee.type !== NODE_TYPES.MEMBER_EXPRESSION ||
+                callee.property.name !== TEMPLATE_CALLERS.HELPERS
+            )
+                return;
+
+            const { arguments: nodeArguments } = node;
+            if (!Array.isArray(nodeArguments) || !nodeArguments.length) return;
+
+            for (const arg of nodeArguments) {
+                const { properties } = arg;
+                if (!properties || !properties.length) return;
+
+                found = properties.find((prop) => {
+                    if (prop.type !== NODE_TYPES.PROPERTY) return;
+
+                    const { key } = prop;
+
+                    return key.name === helperName;
+                });
+
+                if (!!found) {
+                    astWalker.stopWalking();
+                    break;
+                }
+            }
+        });
+
+        return found;
+    }
+
     handleMustacheStatement({ symbol, htmlWalker, uri }) {
         const wrappingTemplate = this.getWrappingTemplate({ uri, symbol });
         if (!wrappingTemplate) return;
@@ -288,11 +335,21 @@ class DefinitionProvider extends ServerBase {
             return;
         }
 
-        /**
-         * TODO:
-         * Walk on the template JS AST and find any expression (either on helpers, or template properties
-         * on the onCreated) that matches the helperName
-         */
+        const helper = this.findHelper(templateUri, symbol);
+        if (!helper || !helper.loc) {
+            console.warn(
+                `Didn't found helper for symbol ${symbol.path.original}`
+            );
+            return;
+        }
+
+        const { Location, Range } = require("vscode-languageserver");
+        const { start, end } = helper.loc;
+
+        return Location.create(
+            templateUri,
+            Range.create(start.line, start.column, end.line, end.column)
+        );
     }
 }
 
