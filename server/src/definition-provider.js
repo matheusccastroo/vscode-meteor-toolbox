@@ -22,6 +22,21 @@ class DefinitionProvider extends ServerBase {
 
         const nodeAtPosition = astWalker.getSymbolAtPosition(position);
         if (!nodeAtPosition) return;
+        if (nodeAtPosition.type === "Identifier") {
+            const helperToSearch = nodeAtPosition.name;
+            const indexArray = this.indexer.htmlUsageMap[helperToSearch];
+            if (!indexArray) return;
+            const { Location, Range } = require("vscode-languageserver");
+
+            return indexArray.map(({ node, uri }) => {
+                const { start, end } = node.loc;
+
+                return Location.create(
+                    uri.path,
+                    Range.create(start.line, start.column, end.line, end.column)
+                );
+            });
+        }
         if (
             nodeAtPosition.object.type !== "MemberExpression" ||
             nodeAtPosition.object.object.name !== "Template"

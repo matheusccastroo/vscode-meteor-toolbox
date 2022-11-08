@@ -59,9 +59,29 @@ class Indexer extends ServerBase {
                 const { NODE_TYPES } = require("./ast-helpers");
 
                 this.templateIndexMap = this.templateIndexMap || {};
+                this.htmlUsageMap = this.htmlUsageMap || {};
                 astWalker.walkUntil((node) => {
                     if (!node) return;
 
+                    if (node.type === NODE_TYPES.MUSTACHE_STATEMENT) {
+                        const existing =
+                            this.htmlUsageMap[node.path.head] || [];
+                        this.htmlUsageMap[node.path.head] = [
+                            ...existing,
+                            { node, uri },
+                        ];
+                    }
+                    if (
+                        node.type === NODE_TYPES.BLOCK_STATEMENT &&
+                        node.params && node.params.length
+                    ) {
+                        const existing =
+                            this.htmlUsageMap[node.params[0].original] || [];
+                        this.htmlUsageMap[node.params[0].original] = [
+                            ...existing,
+                            { node, uri },
+                        ];
+                    }
                     if (
                         node.type === NODE_TYPES.CONTENT_STATEMENT &&
                         typeof node.original === "string"
