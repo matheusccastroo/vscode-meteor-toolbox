@@ -44,12 +44,11 @@ class ServerInstance {
             return {
                 capabilities: {
                     textDocumentSync: TextDocumentSyncKind.Incremental,
-
                     definitionProvider: true,
-                    // We don't support completion for now.
-                    // completionProvider: {
-                    //     resolveProvider: true,
-                    // },
+                    completionProvider: {
+                        resolveProvider: "true",
+                        triggerCharacters: ["."],
+                    },
                 },
             };
         });
@@ -63,6 +62,10 @@ class ServerInstance {
         this.connection.onDefinition((...params) =>
             this.definitionProvider.onDefinitionRequest(...params)
         );
+        this.connection.onCompletion((...params) =>
+            this.definitionProvider.onCompletion(...params)
+        );
+
         this.documents.listen(this.connection);
 
         this.connection.listen();
