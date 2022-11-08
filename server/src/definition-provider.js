@@ -11,9 +11,11 @@ class DefinitionProvider extends ServerBase {
         if (this.isFileSpacebarsHTML(uri)) {
             return this.handleFileSpacebarsHTML({ uri, position });
         }
+
         if (this.isFileSpacebarsJS(uri)) {
             return this.handleFileSpacebarsJS({ uri, position });
         }
+
         return;
     }
 
@@ -21,12 +23,22 @@ class DefinitionProvider extends ServerBase {
         const { astWalker } = this.indexer.getFileInfo(uri);
 
         const nodeAtPosition = astWalker.getSymbolAtPosition(position);
-        if (!nodeAtPosition) return;
-        if (nodeAtPosition.type === "Identifier") {
+        if (!nodeAtPosition) {
+            console.warn("NodeAtPosition not found");
+            return;
+        }
+
+        const { NODE_TYPES, NODE_NAMES } = require("./ast-helpers");
+        const { Location, Range } = require("vscode-languageserver");
+
+        // If is a helper that we want to find on the HTML
+        if (nodeAtPosition.type === NODE_TYPES.IDENTIFIER) {
             const helperToSearch = nodeAtPosition.name;
             const indexArray = this.indexer.htmlUsageMap[helperToSearch];
-            if (!indexArray) return;
-            const { Location, Range } = require("vscode-languageserver");
+            if (!indexArray) {
+                console.warn(`Didn't find helpers for ${nodeAtPosition}`);
+                return;
+            }
 
             return indexArray.map(({ node, uri }) => {
                 const { start, end } = node.loc;
@@ -37,15 +49,19 @@ class DefinitionProvider extends ServerBase {
                 );
             });
         }
+
+        // We just support helpers and templates for now
         if (
-            nodeAtPosition.object.type !== "MemberExpression" ||
-            nodeAtPosition.object.object.name !== "Template"
-        )
+            nodeAtPosition.object.type !== NODE_TYPES.MEMBER_EXPRESSION ||
+            nodeAtPosition.object.object.name !== NODE_NAMES.TEMPLATE
+        ) {
             return;
-        const templateNameToSearch = nodeAtPosition.object.property.name;
-        const index = this.indexer.templateIndexMap[templateNameToSearch];
+        }
+
+        // If is a template we want to show in HTML
+        const index = this.indexer.getTemplateInfo(nodeAtPosition);
         if (!index) return;
-        const { Location, Range } = require("vscode-languageserver");
+
         const { start, end } = index.node.loc;
 
         return Location.create(
@@ -55,7 +71,7 @@ class DefinitionProvider extends ServerBase {
     }
 
     handleFileSpacebarsHTML({ uri, position }) {
-        const { AstWalker } = require("./ast-helpers");
+        const { AstWalker, NODE_TYPES } = require("./ast-helpers");
         const htmlWalker = new AstWalker(
             this.getFileContent(uri),
             require("@handlebars/parser").parse
@@ -75,10 +91,12 @@ class DefinitionProvider extends ServerBase {
             });
         }
 
-        if (htmlWalker.isMustacheStatement(htmlSymbol)) {
+        if (
+            htmlWalker.isPathExpression(htmlSymbol) ||
+            htmlWalker.isMustacheStatement(htmlSymbol)
+        ) {
             return this.handleMustacheStatement({
                 symbol: htmlSymbol,
-                htmlWalker,
                 uri,
             });
         }
@@ -170,8 +188,6 @@ class DefinitionProvider extends ServerBase {
 
         const { Location, Range } = require("vscode-languageserver");
 
-        const _htmlWalker = htmlWalker || this.indexer.getFileInfo(fileUri);
-
         if (isTemplateDefinedInJsFile) {
             /**
              * If the template is defined in the JSfile with the same name as the HTML, then we are good.
@@ -180,6 +196,8 @@ class DefinitionProvider extends ServerBase {
             return Location.create(_uri.fsPath, Range.create(0, 0, 0, 0));
         }
 
+        const _htmlWalker =
+            htmlWalker || this.indexer.getFileInfo(fileUri).astWalker;
         /**
          * If the template is not defined in the JS file of the same name,
          * it's a template without state: in this case, we just return
@@ -231,23 +249,20 @@ class DefinitionProvider extends ServerBase {
 
         /**
          * OK, we need to search for the template.
-         * Loop through each HTML file starting from the current open file directory searching for
-         * the <template name="nameHere"> tag. If we find it, search for the JS file that implements it
-         * and return it's location
          */
-        const { FILE_EXTENSIONS } = require("./helpers");
-        const htmlSources = this.indexer.getSourcesOfType(FILE_EXTENSIONS.HTML);
-
-        for (const { uri } of htmlSources) {
-            if (!this.isTemplateDefinedOnHTMLFile(uri, symbol)) continue;
-
-            return this.findTemplateDefinitionOnFile({ fileUri: uri, symbol });
-        }
+        const { uri: templateUri } = this.indexer.getTemplateInfo(symbol);
 
         /**
          * Well, we tried but we didn't find anything useful.
          */
-        return;
+        if (!templateUri) return;
+
+        const { Location, Range } = require("vscode-languageserver");
+
+        return Location.create(
+            this.parseUri(templateUri).fsPath.replace(".html", ".js"),
+            Range.create(0, 0, 0, 0)
+        );
     }
 
     getWrappingTemplate({ uri, symbol }) {
@@ -258,26 +273,45 @@ class DefinitionProvider extends ServerBase {
             );
         }
 
-        const helperName = symbol.path.original;
+        const helperName =
+            (typeof symbol === "string" && symbol) ||
+            symbol.path?.parts?.[0] ||
+            symbol.path?.original ||
+            symbol.original;
         if (!helperName || typeof helperName !== "string") {
             throw new Error(
                 `Expected to find helper name. Found: ${helperName}`
             );
         }
 
-        // TODO -> Improve this.
+        const findSymbol = (node) => {
+            if (node === helperName) return node;
+
+            if (Array.isArray(node)) {
+                for (const _n of node) {
+                    const ret = findSymbol(_n);
+                    if (ret) return ret;
+                }
+            }
+
+            if (typeof node === "object") {
+                for (const key in node) {
+                    if (Object.hasOwnProperty.call(node, key)) {
+                        const ret = findSymbol(node[key]);
+                        if (ret) return ret;
+                    }
+                }
+            }
+        };
+
         const visitHtmlChildren = (children) => {
             if (!Array.isArray(children)) return;
 
             for (const child of children) {
                 if (typeof child === "string") continue;
 
-                if (
-                    child.__proto__.constructorName ===
-                    "SpacebarsCompiler.TemplateTag"
-                ) {
-                    return child?.path?.includes(helperName) && child;
-                }
+                const foundSymbol = findSymbol(child);
+                if (foundSymbol) return foundSymbol;
 
                 if (!!child.children?.length) {
                     const hasResult = visitHtmlChildren(child.children);
@@ -297,86 +331,24 @@ class DefinitionProvider extends ServerBase {
         });
     }
 
-    findHelper(templateUri, symbol) {
-        const { astWalker } = this.indexer.getFileInfo(templateUri);
-        if (!astWalker) {
-            throw new Error(
-                `Expected astWalker to exist for ${templateUri} but got ${astWalker}`
-            );
-        }
-
-        const helperName = symbol.path.original;
-
-        const { NODE_TYPES } = require("./ast-helpers");
-        const { TEMPLATE_CALLERS } = require("./helpers");
-
-        let found;
-        // Search for the helper on the call expression, i.e Template.templateName.helpers({...});
-        astWalker.walkUntil((node) => {
-            if (!node || node.type !== NODE_TYPES.CALL_EXPRESSION) {
-                return;
-            }
-
-            const callee = node.callee;
-            if (
-                !callee ||
-                callee.type !== NODE_TYPES.MEMBER_EXPRESSION ||
-                callee.property.name !== TEMPLATE_CALLERS.HELPERS
-            )
-                return;
-
-            const { arguments: nodeArguments } = node;
-            if (!Array.isArray(nodeArguments) || !nodeArguments.length) return;
-
-            for (const arg of nodeArguments) {
-                const { properties } = arg;
-                if (!properties || !properties.length) return;
-
-                found = properties.find((prop) => {
-                    if (prop.type !== NODE_TYPES.PROPERTY) return;
-
-                    const { key } = prop;
-
-                    return key.name === helperName;
-                });
-
-                if (!!found) {
-                    astWalker.stopWalking();
-                    break;
-                }
-            }
-        });
-
-        return found;
-    }
-
-    handleMustacheStatement({ symbol, htmlWalker, uri }) {
+    handleMustacheStatement({ symbol, uri }) {
         const wrappingTemplate = this.getWrappingTemplate({ uri, symbol });
         if (!wrappingTemplate) return;
 
-        const templateSymbol = wrappingTemplate.attrs.name;
-        if (!templateSymbol) {
+        const templateName = wrappingTemplate.attrs.name;
+        if (!templateName) {
             throw new Error(
-                `Expected to find template name. Found: ${templateSymbol}`
+                `Expected to find template name. Found: ${templateName}`
             );
         }
 
-        const { uri: templateUri } = this.findTemplateDefinitionOnFile({
-            fileUri: uri,
-            symbol: templateSymbol,
-            htmlWalker,
-        });
+        const helper = this.indexer.getHelperFromTemplateName(
+            templateName,
+            symbol
+        );
 
-        // Means that we didn't find the template either in JS or HTML file.
-        if (!templateUri) {
-            console.warn(
-                "Template definition not found, aborting definition request."
-            );
-            return;
-        }
-
-        const helper = this.findHelper(templateUri, symbol);
-        if (!helper || !helper.loc) {
+        const { start, end } = helper || {};
+        if (!start || !end) {
             console.warn(
                 `Didn't found helper for symbol ${symbol.path.original}`
             );
@@ -384,10 +356,10 @@ class DefinitionProvider extends ServerBase {
         }
 
         const { Location, Range } = require("vscode-languageserver");
-        const { start, end } = helper.loc;
 
+        // TODO -> Should we check if the JS file exists?
         return Location.create(
-            templateUri,
+            this.parseUri(uri).fsPath.replace(".html", ".js"),
             Range.create(start.line, start.column, end.line, end.column)
         );
     }
