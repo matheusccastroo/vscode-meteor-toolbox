@@ -73,22 +73,22 @@ class AstWalker {
 
     // Trying to use a template
     isPartialStatement(node) {
-        return node && node.type === NODE_TYPES.PARTIAL_STATEMENT;
+        return this.isNode(node) && node.type === NODE_TYPES.PARTIAL_STATEMENT;
     }
 
     // Trying to use a helper/property from the template
     isMustacheStatement(node) {
-        return node && node.type === NODE_TYPES.MUSTACHE_STATEMENT;
+        return this.isNode(node) && node.type === NODE_TYPES.MUSTACHE_STATEMENT;
     }
 
     // Block helpers
     isBlockStatement(node) {
-        return node && node.type === NODE_TYPES.BLOCK_STATEMENT;
+        return this.isNode(node) && node.type === NODE_TYPES.BLOCK_STATEMENT;
     }
 
     // Parameters passed to helpers/templates
     isPathExpression(node) {
-        return node && node.type === NODE_TYPES.PATH_EXPRESSION;
+        return this.isNode(node) && node.type === NODE_TYPES.PATH_EXPRESSION;
     }
 }
 

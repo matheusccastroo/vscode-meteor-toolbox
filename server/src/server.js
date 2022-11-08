@@ -6,6 +6,7 @@ const {
 } = require("vscode-languageserver/node");
 const { TextDocument } = require("vscode-languageserver-textdocument");
 const { DefinitionProvider } = require("./definition-provider");
+const { CompletionProvider } = require("./completion-provider");
 const { Indexer } = require("./indexer");
 
 class ServerInstance {
@@ -40,6 +41,12 @@ class ServerInstance {
                 this.rootUri,
                 this.indexer
             );
+            this.completionProvider = new CompletionProvider(
+                this.connection,
+                this.documents,
+                this.rootUri,
+                this.indexer
+            );
 
             return {
                 capabilities: {
@@ -63,8 +70,11 @@ class ServerInstance {
             this.definitionProvider.onDefinitionRequest(...params)
         );
         this.connection.onCompletion((...params) =>
-            this.definitionProvider.onCompletion(...params)
+            this.completionProvider.onCompletionRequest(...params)
         );
+
+        // TODO -> implement completion resolver?.
+        this.connection.onCompletionResolve(() => {});
 
         this.documents.listen(this.connection);
 

@@ -1,39 +1,8 @@
 const { ServerBase } = require("./helpers");
-const { CompletionItemKind } = require("vscode-languageserver-types");
 
 class DefinitionProvider extends ServerBase {
     constructor(serverInstance, documentsInstance, rootUri, indexer) {
-        super(serverInstance, documentsInstance, rootUri);
-
-        this.indexer = indexer;
-    }
-    onCompletion(params) {
-        console.log(params);
-        const {
-            position: { line, character },
-            textDocument: { uri },
-        } = params;
-        if (this.isFileSpacebarsJS(uri)) {
-            const { astWalker } = this.indexer.getFileInfo(uri);
-
-            const nodeAtPosition = astWalker.getSymbolAtPosition({
-                line,
-                character: character - 1,
-            });
-            if (!nodeAtPosition) return;
-            if (
-                nodeAtPosition.type === "Identifier" &&
-                nodeAtPosition.name === "Template"
-            )
-
-                return Object.keys(this.indexer.templateIndexMap).map(
-                    (templateName, index) => ({
-                        label: templateName,
-                        kind: CompletionItemKind.Class,
-                        data: index + 1,
-                    })
-                );
-        }
+        super(serverInstance, documentsInstance, rootUri, indexer);
     }
 
     onDefinitionRequest({ position, textDocument: { uri } }) {
@@ -81,8 +50,8 @@ class DefinitionProvider extends ServerBase {
 
         // We just support helpers and templates for now
         if (
-            nodeAtPosition.object.type !== NODE_TYPES.MEMBER_EXPRESSION ||
-            nodeAtPosition.object.object.name !== NODE_NAMES.TEMPLATE
+            nodeAtPosition.object?.type !== NODE_TYPES.MEMBER_EXPRESSION ||
+            nodeAtPosition.object?.object?.name !== NODE_NAMES.TEMPLATE
         ) {
             return;
         }
