@@ -115,7 +115,7 @@ const NODE_NAMES = {
 
 const DEFAULT_ACORN_OPTIONS = {
     allowImportExportEverywhere: true,
-    ecmaVersion: 7,
+    ecmaVersion: 2020,
     sourceType: "module",
     allowHashBang: true,
     locations: true,

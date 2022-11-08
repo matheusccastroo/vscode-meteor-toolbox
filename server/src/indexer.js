@@ -21,7 +21,7 @@ class Indexer extends ServerBase {
             patterns.map((_p) =>
                 globPromise(_p, {
                     cwd: this.rootUri.fsPath,
-                    ignore: ["tests/**", "node_modules/**"],
+                    ignore: ["tests/**", "**/**.tests.js", "node_modules/**"],
                     absolute: true,
                 })
             )
@@ -42,66 +42,82 @@ class Indexer extends ServerBase {
         const { parse: handlebarsParser } = require("@handlebars/parser");
 
         const results = await Promise.all(
-            uris.map(async (uri) => {
-                const extension = this.getFileExtension(uri);
-                const isFileHtml = this.isFileSpacebarsHTML(uri);
+            uris
+                .map(async (uri) => {
+                    try {
+                        const extension = this.getFileExtension(uri);
+                        const isFileHtml = this.isFileSpacebarsHTML(uri);
 
-                const fileContent = await this.getFileContentPromise(uri);
-                const astWalker = new AstWalker(
-                    fileContent,
-                    isFileHtml ? handlebarsParser : acornParser,
-                    isFileHtml ? {} : DEFAULT_ACORN_OPTIONS
-                );
+                        const fileContent = await this.getFileContentPromise(
+                            uri
+                        );
+                        const astWalker = new AstWalker(
+                            fileContent,
+                            isFileHtml ? handlebarsParser : acornParser,
+                            isFileHtml ? {} : DEFAULT_ACORN_OPTIONS
+                        );
 
-                // Also index the htmlJs representation.
-                const htmlJs =
-                    isFileHtml && SpacebarsCompiler.parse(fileContent);
-                const { NODE_TYPES } = require("./ast-helpers");
+                        // Also index the htmlJs representation.
+                        const htmlJs =
+                            isFileHtml && SpacebarsCompiler.parse(fileContent);
+                        const { NODE_TYPES } = require("./ast-helpers");
 
-                this.templateIndexMap = this.templateIndexMap || {};
-                this.htmlUsageMap = this.htmlUsageMap || {};
-                astWalker.walkUntil((node) => {
-                    if (!node) return;
+                        this.templateIndexMap = this.templateIndexMap || {};
+                        this.htmlUsageMap = this.htmlUsageMap || {};
+                        astWalker.walkUntil((node) => {
+                            if (!node) return;
 
-                    if (node.type === NODE_TYPES.MUSTACHE_STATEMENT) {
-                        const existing =
-                            this.htmlUsageMap[node.path.head] || [];
-                        this.htmlUsageMap[node.path.head] = [
-                            ...existing,
-                            { node, uri },
-                        ];
+                            const { type, params, original, path } = node;
+                            if (type === NODE_TYPES.MUSTACHE_STATEMENT) {
+                                this.htmlUsageMap[path.head] = [
+                                    ...(this.htmlUsageMap[path.head] || []),
+                                    { node, uri },
+                                ];
+                            }
+
+                            if (
+                                type === NODE_TYPES.BLOCK_STATEMENT &&
+                                params &&
+                                params.length
+                            ) {
+                                const firstParam = params[0];
+                                this.htmlUsageMap[firstParam.original] = [
+                                    ...(this.htmlUsageMap[
+                                        firstParam.original
+                                    ] || []),
+                                    { node, uri },
+                                ];
+                            }
+
+                            if (
+                                type === NODE_TYPES.CONTENT_STATEMENT &&
+                                typeof original === "string"
+                            ) {
+                                const regex = /template name=[\"\'](.*)[\"\']/g;
+                                const matches = regex.exec(original);
+
+                                if (!matches || !matches.length) return;
+
+                                this.templateIndexMap[matches[1]] = {
+                                    node,
+                                    uri,
+                                };
+                            }
+                        });
+
+                        return {
+                            extension,
+                            astWalker,
+                            uri,
+                            htmlJs,
+                        };
+                    } catch (e) {
+                        console.error(`Error parsing file ${uri}`);
+                        console.error(e);
+                        return;
                     }
-                    if (
-                        node.type === NODE_TYPES.BLOCK_STATEMENT &&
-                        node.params && node.params.length
-                    ) {
-                        const existing =
-                            this.htmlUsageMap[node.params[0].original] || [];
-                        this.htmlUsageMap[node.params[0].original] = [
-                            ...existing,
-                            { node, uri },
-                        ];
-                    }
-                    if (
-                        node.type === NODE_TYPES.CONTENT_STATEMENT &&
-                        typeof node.original === "string"
-                    ) {
-                        const symbolString = node.original;
-                        const regex = /template name=[\"\'](.*)[\"\']/g;
-                        const matches = regex.exec(symbolString);
-
-                        if (!matches || !matches.length) return;
-
-                        this.templateIndexMap[matches[1]] = { node, uri };
-                    }
-                });
-                return {
-                    extension,
-                    astWalker,
-                    uri,
-                    htmlJs,
-                };
-            })
+                })
+                .filter(Boolean)
         );
 
         this.sources = results.reduce(
