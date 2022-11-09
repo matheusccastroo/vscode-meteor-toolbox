@@ -3,7 +3,6 @@ const { TextDecoder, TextEncoder } = require("util");
 const { isEqual } = require("lodash");
 const json5 = require("json5");
 const merge = require("deepmerge");
-const path = require("path");
 
 const writeToFile = async (data, targetUri) => {
     const path = targetUri.fsPath;
@@ -106,10 +105,26 @@ const clearMeteorBuildCache = async () => {
 
 const isWindows = () => process.platform === "win32";
 
+const isUsingMeteorPackage = async (pkgName) => {
+    if (!pkgName || typeof pkgName !== "string") {
+        throw new Error(`Invalid meteor package name, received: ${pkgName}`);
+    }
+
+    const pkgFilesUri = Uri.joinPath(
+        workspace.workspaceFolders[0].uri,
+        ".meteor/packages"
+    );
+
+    const existingFileContent = await workspace.fs.readFile(pkgFilesUri);
+
+    return existingFileContent.includes(pkgName);
+};
+
 module.exports = {
     createFileFromScratch,
     appendToExistingFile,
     toggleAutoRunPackagesWatcher,
     isWindows,
     clearMeteorBuildCache,
+    isUsingMeteorPackage,
 };

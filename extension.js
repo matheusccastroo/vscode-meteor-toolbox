@@ -6,6 +6,7 @@ const {
 const {
     toggleAutoRunPackagesWatcher,
     clearMeteorBuildCache,
+    isUsingMeteorPackage,
 } = require("./src/helpers");
 const {
     addImportedPackagesToJsConfig,
@@ -33,7 +34,7 @@ const disposeWatchers = () =>
 /**
  * @param {vscode.ExtensionContext} context
  */
-function activate(context) {
+async function activate(context) {
     console.log("Starting Meteor Toolbox extension...");
 
     addDebugAndRunOptions();
@@ -118,18 +119,19 @@ function activate(context) {
         }
     );
 
-    console.log("Connecting to language server...");
-    const serverConnectionDisposable = connectToLanguageServer(
-        context.asAbsolutePath
-    );
+    if (await isUsingMeteorPackage("blaze-html-templates")) {
+        console.log("Connecting to language server...");
+        context.subscriptions.push(
+            connectToLanguageServer(context.asAbsolutePath)
+        );
+    }
 
     context.subscriptions.push(
         toggleAutoRunPackagesWatcherDisposable,
         runOnceDisposable,
         restartDisposer,
         clearMeteorBuildCacheDisposable,
-        regenerateLaunchJsonDisposable,
-        serverConnectionDisposable
+        regenerateLaunchJsonDisposable
     );
 }
 
