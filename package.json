@@ -131,7 +131,6 @@
         "lint": "eslint .",
         "pretest": "npm run lint",
         "test": "node ./test/runTest.js",
-        "vscode:prepublish": "npm run compile",
         "postinstall": "cd server && npm install && cd ../.."
     },
     "devDependencies": {
