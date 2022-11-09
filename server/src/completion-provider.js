@@ -62,6 +62,7 @@ class CompletionProvider extends ServerBase {
             (templateName) => ({
                 ...CompletionItem.create(templateName),
                 textEdit: templateName,
+                sortText: "11",
                 kind: CompletionItemKind.Class,
                 detail: NODE_NAMES.TEMPLATE,
             })
