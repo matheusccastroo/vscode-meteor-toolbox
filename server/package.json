@@ -1,0 +1,33 @@
+{
+	"name": "meteor-language-server",
+	"description": "Meteor Language Server",
+	"version": "1.0.0",
+	"contributors": [
+		{
+			"name": "Matheus Castro"
+		},
+		{
+			"name": "Renan Castro"
+		}
+	],
+	"license": "MIT",
+	"engines": {
+		"node": "*"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Microsoft/vscode-extension-samples"
+	},
+	"dependencies": {
+		"@blastjs/spacebars-compiler": "^1.2.2",
+		"@handlebars/parser": "^2.1.0",
+		"acorn": "^8.8.1",
+		"acorn-loose": "^8.3.0",
+		"ast-types": "^0.14.2",
+		"glob": "^8.0.3",
+		"vscode-languageserver": "^7.0.0",
+		"vscode-languageserver-textdocument": "^1.0.7",
+		"vscode-uri": "^3.0.6"
+	},
+	"scripts": {}
+}

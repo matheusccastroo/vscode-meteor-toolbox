@@ -35,7 +35,9 @@
         "packages"
     ],
     "activationEvents": [
-        "workspaceContains:.meteor/release"
+        "workspaceContains:.meteor/release",
+        "onLanguage:spacebars",
+        "onLanguage:javascript"
     ],
     "contributes": {
         "configuration": [
@@ -98,13 +100,41 @@
                 "command": "config.commands.meteorToolbox.regenerateLaunchJson",
                 "title": "Re-create Meteor Toolbox run/debug options"
             }
+        ],
+        "languages": [
+            {
+                "id": "spacebars",
+                "aliases": [
+                    "Spacebars",
+                    "spacebars"
+                ],
+                "extensions": [
+                    ".html"
+                ],
+                "icon": {
+                    "light": "./images/blaze-icon.png",
+                    "dark": "./images/blaze-icon.png"
+                },
+                "configuration": "./spacebars/language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "spacebars",
+                "scopeName": "text.html.spacebars",
+                "path": "./spacebars/syntaxes/spacebars.tmLanguage.json"
+            }
         ]
     },
     "main": "./extension.js",
     "scripts": {
         "lint": "eslint .",
         "pretest": "npm run lint",
-        "test": "node ./test/runTest.js"
+        "test": "node ./test/runTest.js",
+        "run:spacebars": "tsc -b -w",
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -b",
+        "postinstall": "cd server && npm install && cd ../.."
     },
     "devDependencies": {
         "@types/glob": "^7.2.0",
@@ -115,11 +145,12 @@
         "eslint": "^8.14.0",
         "glob": "^8.0.1",
         "mocha": "^9.2.2",
-        "typescript": "^4.6.4"
+        "typescript": "^4.8.4"
     },
     "dependencies": {
         "deepmerge": "^4.2.2",
         "json5": "^2.2.1",
-        "lodash": "^4.17.21"
+        "lodash": "^4.17.21",
+        "vscode-languageclient": "8.0.2"
     }
 }
