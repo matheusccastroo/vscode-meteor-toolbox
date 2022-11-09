@@ -16,11 +16,11 @@ Meteor Toolbox is the only extension implementing a Blaze completion/definition 
 
 ### Completion
 
-[completion](/images/completion.gif)
+![completion](/images/completion.gif)
 
 ### Go to Definition
 
-[goto-definition](/images/gotodefinition.gif.gif)
+![goto-definition](/images/gotodefinition.gif.gif)
 
 ## Available commands
 
