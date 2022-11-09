@@ -1,8 +1,15 @@
 {
-	"name": "lsp-sample-server",
-	"description": "Example implementation of a language server in node.",
+	"name": "meteor-language-server",
+	"description": "Meteor Language Server",
 	"version": "1.0.0",
-	"author": "Microsoft Corporation",
+	"contributors": [
+		{
+			"name": "Matheus Castro"
+		},
+		{
+			"name": "Renan Castro"
+		}
+	],
 	"license": "MIT",
 	"engines": {
 		"node": "*"
