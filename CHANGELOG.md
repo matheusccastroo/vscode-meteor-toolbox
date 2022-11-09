@@ -4,6 +4,11 @@ All notable changes to the "meteor-dev" extension will be documented in this fil
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [09/11/22]
+
+-   Create Meteor Language Server
+-   Add support for Blaze and Spacebars
+
 ## [06/09/22]
 
 -   Fix issue with custom packages (#4)
