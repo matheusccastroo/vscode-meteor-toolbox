@@ -15,6 +15,13 @@ class CompletionProvider extends ServerBase {
         context: { triggerCharacter },
         position,
     }) {
+        if (
+            !triggerCharacter ||
+            !Object.values(TRIGGER_CHARACTERS).includes(triggerCharacter)
+        ) {
+            return;
+        }
+
         if (this.isFileSpacebarsJS(uri)) {
             return this.handleJsCompletion({ uri, position });
         }
@@ -34,9 +41,10 @@ class CompletionProvider extends ServerBase {
             NODE_NAMES,
             NODE_TYPES,
         } = require("./ast-helpers");
+        // Parse with accorn-loose because the input can be syntatically wrong.
         const astWalker = new AstWalker(
             this.getFileContent(uri),
-            require("acorn").parse,
+            require("acorn-loose").parse,
             DEFAULT_ACORN_OPTIONS
         );
 

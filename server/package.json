@@ -15,6 +15,7 @@
 		"@blastjs/spacebars-compiler": "^1.2.2",
 		"@handlebars/parser": "^2.1.0",
 		"acorn": "^8.8.1",
+		"acorn-loose": "^8.3.0",
 		"ast-types": "^0.14.2",
 		"glob": "^8.0.3",
 		"vscode-languageserver": "^7.0.0",
