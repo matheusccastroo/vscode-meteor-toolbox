@@ -54,7 +54,7 @@ class Indexer extends ServerBase {
     }
 
     // Index helper usage and template definitions on HTML.
-    async indexHtmlFile({ uri, astWalker }) {
+    indexHtmlFile({ uri, astWalker }) {
         const { NODE_TYPES } = require("./ast-helpers");
 
         astWalker.walkUntil((node) => {
@@ -101,7 +101,7 @@ class Indexer extends ServerBase {
     }
 
     // Index helpers definitions on JS
-    async indexJsFile({ astWalker }) {
+    indexJsFile({ astWalker }) {
         const { NODE_TYPES } = require("./ast-helpers");
         const { TEMPLATE_CALLERS } = require("./helpers");
 
