@@ -66,6 +66,10 @@
                             "meteorPackageDirs": {
                                 "type": "string",
                                 "description": "Colon-delimited list of local package directories to look in, besides the default packages folder. The path should be relative to the current workspace."
+                            },
+                            "ignoreDirsOnIndexing": {
+                                "type": "string",
+                                "description": "Colon-delimited list of directories to not index on the language server. The path should be relative to the current workspace."
                             }
                         },
                         "additionalProperties": false,
@@ -73,7 +77,8 @@
                             "auto": true,
                             "port": "3000",
                             "additionalArgs": null,
-                            "meteorPackageDirs": null
+                            "meteorPackageDirs": null,
+                            "ignoreDirsOnIndexing": null
                         }
                     }
                 }

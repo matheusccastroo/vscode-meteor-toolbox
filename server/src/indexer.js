@@ -12,18 +12,37 @@ class Indexer extends ServerBase {
         this.sources = {};
         this.templateIndexMap = {};
         this.htmlUsageMap = {};
+        this.ignoreDirs = [];
     }
 
     async findUris(patterns) {
         const glob = require("glob");
         const { promisify } = require("util");
 
+        const directoriesToBeIgnored = this.ignoreDirs.map(({ fsPath }) => {
+            const finishesWithSlash = fsPath[fsPath.length - 1] === "/";
+            const startsWithSlash = fsPath[0] === "/";
+
+            let finalGlob = `${fsPath}${finishesWithSlash ? "" : "/"}**`;
+            // If starts with "/", we remove it so that the Glob works correctly for the cwd specified.
+            if (startsWithSlash) {
+                finalGlob = finalGlob.slice(1);
+            }
+
+            return finalGlob;
+        });
+
         const globPromise = promisify(glob);
         const uriArrays = await Promise.all(
             patterns.map((_p) =>
                 globPromise(_p, {
                     cwd: this.rootUri.fsPath,
-                    ignore: ["tests/**", "**/**.tests.js", "node_modules/**"],
+                    ignore: [
+                        "tests/**",
+                        "**/**.tests.js",
+                        "node_modules/**",
+                        ...directoriesToBeIgnored,
+                    ],
                     absolute: true,
                 })
             )
@@ -140,6 +159,7 @@ class Indexer extends ServerBase {
         const { parse: acornParser } = require("acorn");
         const { parse: handlebarsParser } = require("@handlebars/parser");
 
+        const parsingErrors = [];
         const results = await Promise.all(
             uris
                 .map(async (uri) => {
@@ -175,6 +195,7 @@ class Indexer extends ServerBase {
                         };
                     } catch (e) {
                         console.error(`Error parsing file ${uri}. Error: ${e}`);
+                        parsingErrors.push({ uri, error: e });
                         return;
                     }
                 })
@@ -186,6 +207,11 @@ class Indexer extends ServerBase {
             {}
         );
         this.loaded = true;
+
+        return {
+            hasErrors: Array.isArray(parsingErrors) && parsingErrors.length,
+            errors: parsingErrors,
+        };
     }
 
     getSources() {
@@ -244,6 +270,41 @@ class Indexer extends ServerBase {
         return Object.values(this.getSources()).filter(
             ({ extension }) => extension === fileExtension
         );
+    }
+
+    async onDidChangeConfiguration({
+        settings: {
+            conf: {
+                settingsEditor: {
+                    meteorToolbox: { ignoreDirsOnIndexing } = {},
+                } = {},
+            } = {},
+        } = {},
+    }) {
+        if (!ignoreDirsOnIndexing) {
+            console.warn("No dirs set to be ignored, nothing to do...");
+            return;
+        }
+
+        const parsedDirs = ignoreDirsOnIndexing.split(",");
+        if (!parsedDirs.length) {
+            throw new Error("Error parsing directories to ignore on indexing.");
+        }
+
+        this.ignoreDirs = parsedDirs.map((d) => this.parseUri(d));
+
+        await this.reindex();
+    }
+
+    async reindex() {
+        console.info(`* Indexing project: ${this.rootUri}`);
+        const { hasErrors, errors } = await this.loadSources();
+        if (!hasErrors) {
+            console.info("* Indexing completed.");
+            return;
+        }
+
+        // TODO -> Log and warn user about errors on LSP indexing.
     }
 }
 

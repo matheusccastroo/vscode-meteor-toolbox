@@ -33,7 +33,7 @@ class ServerInstance {
             });
 
             // Create the "index"
-            await this.indexer.loadSources();
+            await this.indexer.reindex();
 
             this.definitionProvider = new DefinitionProvider(
                 this.connection,
@@ -72,19 +72,15 @@ class ServerInstance {
         this.connection.onCompletion((...params) =>
             this.completionProvider.onCompletionRequest(...params)
         );
-
+        this.connection.onDidChangeConfiguration((...params) =>
+            this.indexer.onDidChangeConfiguration(...params)
+        );
         // TODO -> implement completion resolver?.
         this.connection.onCompletionResolve(() => {});
 
         this.documents.listen(this.connection);
 
         this.connection.listen();
-    }
-
-    async reindex() {
-        console.info(`* Reindexing project: ${this.rootUri}`);
-        await this.indexer.loadSources();
-        console.info("* Reindexing completed.");
     }
 
     scheduleReindexing() {
@@ -98,9 +94,11 @@ class ServerInstance {
         );
 
         this.reindexingTimeout = setTimeout(() => {
-            this.reindex().catch((err) =>
-                console.error(`Failed to reindex: ${err.message}`)
-            );
+            this.indexer
+                .reindex()
+                .catch((err) =>
+                    console.error(`Failed to reindex: ${err.message}`)
+                );
         }, timeoutMs);
     }
 }

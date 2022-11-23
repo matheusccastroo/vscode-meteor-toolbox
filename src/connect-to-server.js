@@ -28,6 +28,9 @@ const connectToLanguageServer = (asAbsolutePath) => {
             { scheme: "file", language: "javascript" },
             { scheme: "file", language: "spacebars" },
         ],
+        synchronize: {
+            configurationSection: "conf.settingsEditor.meteorToolbox",
+        },
     };
 
     // Create the language client and start the client.
