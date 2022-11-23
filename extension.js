@@ -122,7 +122,7 @@ async function activate(context) {
     if (await isUsingMeteorPackage("blaze-html-templates")) {
         console.log("Connecting to language server...");
         context.subscriptions.push(
-            connectToLanguageServer(context.asAbsolutePath)
+            await connectToLanguageServer(context.asAbsolutePath)
         );
     }
 

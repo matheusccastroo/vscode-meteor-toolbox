@@ -1,5 +1,5 @@
 let client;
-const connectToLanguageServer = (asAbsolutePath) => {
+const connectToLanguageServer = async (asAbsolutePath) => {
     const {
         TransportKind,
         LanguageClient,
@@ -42,9 +42,30 @@ const connectToLanguageServer = (asAbsolutePath) => {
     );
 
     // Start the client. This will also launch the server
-    client.start();
+    await client.start();
+    setupNotifications();
 
     return client;
+};
+
+const setupNotifications = () => {
+    if (!client) {
+        throw new Error(
+            "Too soon to setup notifications, wait for the server connection."
+        );
+    }
+
+    client.onNotification("errors/parsing", (filesPath) => {
+        if (!filesPath) {
+            return;
+        }
+
+        const { window } = require("vscode");
+        window.showErrorMessage(
+            `Meteor Toolbox was unable to parse the following files: ${filesPath}.
+             If parsing errors are expected for such files, remember to add them to the excluded files list on the extension settings.`
+        );
+    });
 };
 
 const stopServer = () => {
