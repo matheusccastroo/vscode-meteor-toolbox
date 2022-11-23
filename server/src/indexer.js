@@ -291,7 +291,7 @@ class Indexer extends ServerBase {
                 );
             }
 
-            this.ignoreDirs = parsedDirs.map((d) => this.parseUri(d));
+            this.ignoreDirs = parsedDirs.map(this.parseUri);
         }
 
         await this.reindex();
