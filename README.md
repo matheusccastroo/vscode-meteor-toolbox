@@ -4,6 +4,8 @@ Extension to enable intelisense for Meteor core, added packages and custom packa
 
 The packages watcher is inspired on [meteor-package-intellisense](https://github.com/mattblackdev/meteor-package-intellisense).
 
+The extension is available on [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=meteor-toolbox.meteor-toolbox) and on [Open VSX Registry](https://open-vsx.org/extension/meteor-toolbox/meteor-toolbox).
+
 ## Usage
 
 Just install the extension and it will add the needed configuration for you.
@@ -47,6 +49,8 @@ This extension only runs inside a Meteor project.
 -   `additionalArgs` -> Set additional args to meteor run/debug configuration. Re-create the run options when changing this setting.
 
 -   `meteorPackageDirs` -> Use a custom packages diretory.
+
+-   `ignoreDirsOnIndexing` -> List of directories to ignore when the Meteor Language Server is indexing the project.
 
 ## Authors
 
