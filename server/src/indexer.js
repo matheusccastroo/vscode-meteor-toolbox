@@ -12,18 +12,37 @@ class Indexer extends ServerBase {
         this.sources = {};
         this.templateIndexMap = {};
         this.htmlUsageMap = {};
+        this.ignoreDirs = [];
     }
 
     async findUris(patterns) {
         const glob = require("glob");
         const { promisify } = require("util");
 
+        const directoriesToBeIgnored = this.ignoreDirs.map(({ fsPath }) => {
+            const finishesWithSlash = fsPath[fsPath.length - 1] === "/";
+            const startsWithSlash = fsPath[0] === "/";
+
+            let finalGlob = `${fsPath}${finishesWithSlash ? "" : "/"}**`;
+            // If starts with "/", we remove it so that the Glob works correctly for the cwd specified.
+            if (startsWithSlash) {
+                finalGlob = finalGlob.slice(1);
+            }
+
+            return finalGlob;
+        });
+
         const globPromise = promisify(glob);
         const uriArrays = await Promise.all(
             patterns.map((_p) =>
                 globPromise(_p, {
                     cwd: this.rootUri.fsPath,
-                    ignore: ["tests/**", "**/**.tests.js", "node_modules/**"],
+                    ignore: [
+                        "tests/**",
+                        "**/**.tests.js",
+                        "node_modules/**",
+                        ...directoriesToBeIgnored,
+                    ],
                     absolute: true,
                 })
             )
@@ -35,7 +54,7 @@ class Indexer extends ServerBase {
     }
 
     // Index helper usage and template definitions on HTML.
-    async indexHtmlFile({ uri, astWalker }) {
+    indexHtmlFile({ uri, astWalker }) {
         const { NODE_TYPES } = require("./ast-helpers");
 
         astWalker.walkUntil((node) => {
@@ -82,7 +101,7 @@ class Indexer extends ServerBase {
     }
 
     // Index helpers definitions on JS
-    async indexJsFile({ astWalker }) {
+    indexJsFile({ astWalker }) {
         const { NODE_TYPES } = require("./ast-helpers");
         const { TEMPLATE_CALLERS } = require("./helpers");
 
@@ -140,52 +159,58 @@ class Indexer extends ServerBase {
         const { parse: acornParser } = require("acorn");
         const { parse: handlebarsParser } = require("@handlebars/parser");
 
+        const parsingErrors = [];
         const results = await Promise.all(
-            uris
-                .map(async (uri) => {
-                    try {
-                        const extension = this.getFileExtension(uri);
-                        const isFileHtml = this.isFileSpacebarsHTML(uri);
+            uris.map(async (uri) => {
+                try {
+                    const extension = this.getFileExtension(uri);
+                    const isFileHtml = this.isFileSpacebarsHTML(uri);
 
-                        const fileContent = await this.getFileContentPromise(
-                            uri
-                        );
+                    const fileContent = await this.getFileContentPromise(uri);
 
-                        const astWalker = new AstWalker(
-                            fileContent,
-                            isFileHtml ? handlebarsParser : acornParser,
-                            isFileHtml ? {} : DEFAULT_ACORN_OPTIONS
-                        );
+                    const astWalker = new AstWalker(
+                        fileContent,
+                        isFileHtml ? handlebarsParser : acornParser,
+                        isFileHtml ? {} : DEFAULT_ACORN_OPTIONS
+                    );
 
-                        // Also index the htmlJs representation.
-                        const htmlJs =
-                            isFileHtml && SpacebarsCompiler.parse(fileContent);
+                    // Also index the htmlJs representation.
+                    const htmlJs =
+                        isFileHtml && SpacebarsCompiler.parse(fileContent);
 
-                        if (isFileHtml) {
-                            this.indexHtmlFile({ uri, astWalker });
-                        } else {
-                            this.indexJsFile({ astWalker });
-                        }
-
-                        return {
-                            extension,
-                            astWalker,
-                            uri,
-                            htmlJs,
-                        };
-                    } catch (e) {
-                        console.error(`Error parsing file ${uri}. Error: ${e}`);
-                        return;
+                    if (isFileHtml) {
+                        this.indexHtmlFile({ uri, astWalker });
+                    } else {
+                        this.indexJsFile({ astWalker });
                     }
-                })
-                .filter(Boolean)
+
+                    return {
+                        extension,
+                        astWalker,
+                        uri,
+                        htmlJs,
+                    };
+                } catch (e) {
+                    console.error(`Error parsing ${uri}. ${e}`);
+                    parsingErrors.push({ uri, error: e });
+                    return;
+                }
+            })
         );
 
-        this.sources = results.reduce(
-            (acc, fileInfo) => ({ ...acc, [fileInfo.uri.fsPath]: fileInfo }),
+        this.sources = results.filter(Boolean).reduce(
+            (acc, fileInfo) => ({
+                ...acc,
+                [fileInfo.uri.fsPath]: fileInfo,
+            }),
             {}
         );
         this.loaded = true;
+
+        return {
+            hasErrors: Array.isArray(parsingErrors) && !!parsingErrors.length,
+            errors: parsingErrors,
+        };
     }
 
     getSources() {
@@ -243,6 +268,46 @@ class Indexer extends ServerBase {
 
         return Object.values(this.getSources()).filter(
             ({ extension }) => extension === fileExtension
+        );
+    }
+
+    async onDidChangeConfiguration({
+        settings: {
+            conf: {
+                settingsEditor: {
+                    meteorToolbox: { ignoreDirsOnIndexing } = {},
+                } = {},
+            } = {},
+        } = {},
+    }) {
+        if (!ignoreDirsOnIndexing) {
+            console.warn("No directories set to be ignored, nothing to do...");
+            this.ignoreDirs = [];
+        } else {
+            const parsedDirs = ignoreDirsOnIndexing.split(",");
+            if (!parsedDirs.length) {
+                throw new Error(
+                    "Error parsing directories to ignore on indexing."
+                );
+            }
+
+            this.ignoreDirs = parsedDirs.map(this.parseUri);
+        }
+
+        await this.reindex();
+    }
+
+    async reindex() {
+        console.info(`* Indexing project: ${this.rootUri}`);
+        const { hasErrors, errors } = await this.loadSources();
+        if (!hasErrors) {
+            console.info("* Indexing completed.");
+            return;
+        }
+
+        this.serverInstance.sendNotification(
+            "errors/parsing",
+            errors.map(({ uri }) => uri.fsPath).join(", \n")
         );
     }
 }

@@ -319,14 +319,18 @@ class DefinitionProvider extends ServerBase {
         };
 
         const { TAG_NAMES } = require("./helpers");
-        return htmlJs.find((htmlTag) => {
-            // Helpers are used only on template tags
-            if (htmlTag.tagName !== TAG_NAMES.TEMPLATE) return;
-            // If we don't have children, we are not using a helper.
-            if (!htmlTag.children.length) return;
+        if (Array.isArray(htmlJs)) {
+            return htmlJs.find((htmlTag) => {
+                // Helpers are used only on template tags
+                if (htmlTag.tagName !== TAG_NAMES.TEMPLATE) return;
+                // If we don't have children, we are not using a helper.
+                if (!htmlTag.children.length) return;
 
-            return visitHtmlChildren(htmlTag.children);
-        });
+                return visitHtmlChildren(htmlTag.children);
+            });
+        }
+
+        return visitHtmlChildren(htmlJs.children) && htmlJs;
     }
 
     handleMustacheStatement({ symbol, uri }) {
