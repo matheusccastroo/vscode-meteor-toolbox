@@ -4,6 +4,10 @@ All notable changes to the "meteor-dev" extension will be documented in this fil
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [24/11/22]
+
+-   Add option to ignore directories for indexing on the extension settings.
+
 ## [09/11/22]
 
 -   Create Meteor Language Server
