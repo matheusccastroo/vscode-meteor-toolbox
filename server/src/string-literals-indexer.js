@@ -280,6 +280,12 @@ class StringLiteralIndexer {
 
         return this.methodsMap[key] || this.publicationsMap[key] || {};
     }
+
+    reset() {
+        this.methodsMap = {};
+        this.publicationsMap = {};
+        this.usageMap = {};
+    }
 }
 
 module.exports = { StringLiteralIndexer };

@@ -201,6 +201,9 @@ class Indexer extends ServerBase {
 
     async reindex() {
         console.info(`* Indexing project: ${this.rootUri}`);
+        [this.blazeIndexer, this.stringLiteralsIndexer].forEach((i) =>
+            i?.reset?.()
+        );
         const { hasErrors, errors } = await this.loadSources();
         if (!hasErrors) {
             console.info("* Indexing completed.");

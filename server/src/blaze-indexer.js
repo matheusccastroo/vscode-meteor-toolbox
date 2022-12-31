@@ -100,7 +100,7 @@ class BlazeIndexer {
 
         const { type, params, original, path } = node;
         if (type === NODE_TYPES.MUSTACHE_STATEMENT) {
-            this.addUsage({
+            return this.addUsage({
                 node,
                 uri,
                 key: path.head,
@@ -113,7 +113,7 @@ class BlazeIndexer {
             !!params.length
         ) {
             const firstParam = params[0];
-            this.addUsage({ node, uri, key: firstParam.original });
+            return this.addUsage({ node, uri, key: firstParam.original });
         }
 
         // Index <template name="templateName"> tags.
@@ -158,6 +158,7 @@ class BlazeIndexer {
     getTemplateInfo(templateName) {
         const _name =
             (typeof templateName === "string" && templateName) ||
+            templateName.parts?.[0] ||
             templateName.name?.original ||
             templateName.object?.property?.name;
 
@@ -168,6 +169,11 @@ class BlazeIndexer {
         }
 
         return this.templateIndexMap[_name];
+    }
+
+    reset() {
+        this.templateIndexMap = {};
+        this.htmlUsageMap = {};
     }
 }
 

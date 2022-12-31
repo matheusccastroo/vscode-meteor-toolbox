@@ -50,7 +50,7 @@ class DefinitionProvider extends ServerBase {
             const indexArray =
                 this.indexer.blazeIndexer.htmlUsageMap[helperToSearch];
             if (!indexArray) {
-                console.warn(`Didn't find helpers for ${nodeAtPosition}`);
+                console.warn(`Didn't find helpers for ${helperToSearch}`);
                 return;
             }
 
@@ -93,7 +93,13 @@ class DefinitionProvider extends ServerBase {
         const htmlSymbol = htmlWalker.getSymbolAtPosition(position);
 
         if (!htmlSymbol) {
-            console.warn("HTML Symbol not found");
+            console.warn(
+                `HTML Symbol not found for position ${JSON.stringify(
+                    position,
+                    undefined,
+                    2
+                )}. File uri is: ${uri}`
+            );
             return;
         }
 

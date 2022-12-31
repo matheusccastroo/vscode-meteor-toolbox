@@ -19,6 +19,13 @@ class AstWalker {
         this.walkUntil((node) => {
             if (node.loc && this.isSymbolInPositionRange(position, node.loc)) {
                 symbol = node;
+
+                // If we don't stop here if we found a path expression, we will end getting
+                // the expression that was used on the path expression, which is not a
+                // partial statement.
+                if (node.type === NODE_TYPES.PARTIAL_STATEMENT) {
+                    this.stopWalking();
+                }
             }
         });
 
