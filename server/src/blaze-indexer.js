@@ -126,12 +126,14 @@ class BlazeIndexer {
 
             if (!matches || !matches.length) return;
 
-            const existingValues = this.templateIndexMap[matches[1]];
-            this.templateIndexMap[matches[1]] = {
+            const existingValues = this.templateIndexMap[matches[1]] || [];
+            this.templateIndexMap[matches[1]] = [
                 ...existingValues,
-                node,
-                uri,
-            };
+                {
+                    node,
+                    uri,
+                },
+            ];
         }
     }
 
@@ -160,7 +162,8 @@ class BlazeIndexer {
             (typeof templateName === "string" && templateName) ||
             templateName.parts?.[0] ||
             templateName.name?.original ||
-            templateName.object?.property?.name;
+            templateName.object?.property?.name ||
+            templateName.name;
 
         if (!_name) {
             throw new Error(

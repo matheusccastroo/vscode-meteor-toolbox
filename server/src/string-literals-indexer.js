@@ -281,6 +281,14 @@ class StringLiteralIndexer {
         return this.methodsMap[key] || this.publicationsMap[key] || {};
     }
 
+    getUsageInfo(key) {
+        if (!key || typeof key !== "string") {
+            throw new Error(`Expected to receive key, but got: ${key}`);
+        }
+
+        return this.usageMap[key] || {};
+    }
+
     reset() {
         this.methodsMap = {};
         this.publicationsMap = {};

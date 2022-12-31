@@ -7,6 +7,7 @@ const {
 const { TextDocument } = require("vscode-languageserver-textdocument");
 const { DefinitionProvider } = require("./definition-provider");
 const { CompletionProvider } = require("./completion-provider");
+const { ReferencesProvider } = require("./references-provider");
 const { Indexer } = require("./indexer");
 
 class ServerInstance {
@@ -47,11 +48,18 @@ class ServerInstance {
                 this.rootUri,
                 this.indexer
             );
+            this.referencesProvider = new ReferencesProvider(
+                this.connection,
+                this.documents,
+                this.rootUri,
+                this.indexer
+            );
 
             return {
                 capabilities: {
                     textDocumentSync: TextDocumentSyncKind.Incremental,
                     definitionProvider: true,
+                    referencesProvider: true,
                     completionProvider: {
                         resolveProvider: "true",
                         triggerCharacters: ["."],
@@ -71,6 +79,9 @@ class ServerInstance {
         );
         this.connection.onCompletion((...params) =>
             this.completionProvider.onCompletionRequest(...params)
+        );
+        this.connection.onReferences((...params) =>
+            this.referencesProvider.onReferenceRequest(...params)
         );
         this.connection.onDidChangeConfiguration((...params) =>
             this.indexer.onDidChangeConfiguration(...params)

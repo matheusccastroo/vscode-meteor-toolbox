@@ -26,60 +26,24 @@ class DefinitionProvider extends ServerBase {
             return;
         }
 
-        const { NODE_TYPES, NODE_NAMES } = require("./ast-helpers");
+        const { NODE_TYPES } = require("./ast-helpers");
         const { Location, Range } = require("vscode-languageserver");
 
-        // If it's a string literal, we check for methods and publications
-        if (nodeAtPosition.type === NODE_TYPES.LITERAL) {
-            const literalValue = nodeAtPosition.value;
-            const { node: { loc: { start, end } = {} } = {}, uri } =
-                this.indexer.stringLiteralsIndexer.getLiteralInfo(literalValue);
-            if (!start || !end || !uri) {
-                console.warn(`Didn't find definition for ${nodeAtPosition}`);
-            }
-
-            return Location.create(
-                uri.path,
-                Range.create(start.line, start.column, end.line, end.column)
-            );
-        }
-
-        // If is a helper that we want to find on the HTML
-        if (nodeAtPosition.type === NODE_TYPES.IDENTIFIER) {
-            const helperToSearch = nodeAtPosition.name;
-            const indexArray =
-                this.indexer.blazeIndexer.htmlUsageMap[helperToSearch];
-            if (!indexArray) {
-                console.warn(`Didn't find helpers for ${helperToSearch}`);
-                return;
-            }
-
-            return indexArray.map(({ node, uri }) => {
-                const { start, end } = node.loc;
-
-                return Location.create(
-                    uri.path,
-                    Range.create(start.line, start.column, end.line, end.column)
-                );
-            });
-        }
-
-        // We just support helpers and templates for now
-        if (
-            nodeAtPosition.object?.type !== NODE_TYPES.MEMBER_EXPRESSION ||
-            nodeAtPosition.object?.object?.name !== NODE_NAMES.TEMPLATE
-        ) {
+        if (nodeAtPosition.type !== NODE_TYPES.LITERAL) {
             return;
         }
 
-        // If is a template we want to show in HTML
-        const index = this.indexer.blazeIndexer.getTemplateInfo(nodeAtPosition);
-        if (!index) return;
-
-        const { start, end } = index.node.loc;
+        // If it's a string literal, we check for methods and publications
+        const literalValue = nodeAtPosition.value;
+        const { node: { loc: { start, end } = {} } = {}, uri: literalUri } =
+            this.indexer.stringLiteralsIndexer.getLiteralInfo(literalValue);
+        if (!start || !end || !literalUri) {
+            console.warn(`Didn't find definition for ${nodeAtPosition}`);
+            return;
+        }
 
         return Location.create(
-            index.uri.path,
+            literalUri.path,
             Range.create(start.line, start.column, end.line, end.column)
         );
     }
