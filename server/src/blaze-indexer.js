@@ -18,6 +18,39 @@ class BlazeIndexer {
         this.templateIndexMap[templateName]["helpers"][helperName] = value;
     }
 
+    addUsage({ node, uri, key }) {
+        if (!node || !uri || !key) {
+            throw new Error(
+                `Expected to receive node, uri and key, but got: ${node}, ${uri} and ${key}.`
+            );
+        }
+
+        const {
+            loc: {
+                start: { line: startLine, column: startColumn },
+                end: { line: endLine, column: endColumn },
+            },
+        } = node;
+        const entryKey = `${uri.fsPath}${startLine}${startColumn}${endLine}${endColumn}`;
+
+        if (!Array.isArray(this.htmlUsageMap[key])) {
+            this.htmlUsageMap[key] = [{ node, uri, entryKey }];
+            return;
+        }
+
+        // Entry already exists, no need to add again.
+        if (
+            this.htmlUsageMap[key].some(
+                ({ entryKey: existingEntryKey }) =>
+                    existingEntryKey === entryKey
+            )
+        ) {
+            return;
+        }
+
+        return this.htmlUsageMap[key].push({ node, uri, entryKey });
+    }
+
     indexHelpers(node) {
         const { NODE_TYPES } = require("./ast-helpers");
 
@@ -67,10 +100,11 @@ class BlazeIndexer {
 
         const { type, params, original, path } = node;
         if (type === NODE_TYPES.MUSTACHE_STATEMENT) {
-            this.htmlUsageMap[path.head] = [
-                ...(this.htmlUsageMap[path.head] || []),
-                { node, uri },
-            ];
+            this.addUsage({
+                node,
+                uri,
+                key: path.head,
+            });
         }
 
         if (
@@ -79,10 +113,7 @@ class BlazeIndexer {
             !!params.length
         ) {
             const firstParam = params[0];
-            this.htmlUsageMap[firstParam.original] = [
-                ...(this.htmlUsageMap[firstParam.original] || []),
-                { node, uri },
-            ];
+            this.addUsage({ node, uri, key: firstParam.original });
         }
 
         // Index <template name="templateName"> tags.
