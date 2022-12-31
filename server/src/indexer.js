@@ -71,13 +71,17 @@ class Indexer extends ServerBase {
         });
     }
 
-    indexJsFile({ astWalker }) {
-        if (!astWalker) {
-            throw new Error("Missing ast-walker.");
+    indexJsFile({ uri, astWalker }) {
+        if (!astWalker || !uri) {
+            throw new Error(
+                `Expected to receive uri and astWalker, but got: ${uri} and ${astWalker}`
+            );
         }
 
         astWalker.walkUntil((node) => {
-            this.stringLiteralsIndexer.indexStringLiterals(node);
+            this.stringLiteralsIndexer.indexDefinitions({ uri, node });
+            this.stringLiteralsIndexer.indexUsage({ uri, node });
+
             this.blazeIndexer.indexHelpers(node);
         });
     }
@@ -113,7 +117,7 @@ class Indexer extends ServerBase {
                     if (isFileHtml) {
                         this.indexHtmlFile({ uri, astWalker });
                     } else {
-                        this.indexJsFile({ astWalker });
+                        this.indexJsFile({ uri, astWalker });
                     }
 
                     return {

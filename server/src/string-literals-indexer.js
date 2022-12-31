@@ -11,8 +11,42 @@
  */
 class StringLiteralIndexer {
     constructor() {
+        // Store definitions
         this.methodsMap = {};
         this.publicationsMap = {};
+
+        // Store usages
+        this.usageMap = {};
+    }
+
+    addUsage({ node, uri }) {
+        if (!node || !uri) {
+            throw new Error(
+                `Expected to receive node and uri, but got: ${node} and ${uri}`
+            );
+        }
+
+        const {
+            value,
+            loc: {
+                start: { line: startLine, column: startColumn },
+                end: { line: endLine, column: endColumn },
+            },
+        } = node;
+        const entryKey = `${uri.fsPath}${startLine}${startColumn}${endLine}${endColumn}`;
+        this.usageMap[value] = this.usageMap[value] || [];
+
+        // If entry key is already on the values, don't add it again.
+        if (
+            this.usageMap[value].some(
+                ({ entryKey: existingEntryKey }) =>
+                    existingEntryKey === entryKey
+            )
+        ) {
+            return;
+        }
+
+        this.usageMap[value].push({ node, uri, entryKey });
     }
 
     addStringLiteralToMap({ type, value, loc }, isMethod) {
@@ -132,7 +166,38 @@ class StringLiteralIndexer {
         );
     }
 
-    indexStringLiterals(node) {
+    indexUsage({ node, uri }) {
+        if (!node || !uri) {
+            throw new Error(
+                `Expected to receive node and uri, but got: ${node} and ${uri}`
+            );
+        }
+
+        const { NODE_TYPES } = require("./ast-helpers");
+
+        const { type, value } = node;
+        if (type !== NODE_TYPES.LITERAL) {
+            return;
+        }
+
+        if (
+            ![this.methodsMap, this.publicationsMap].some((map) =>
+                Object.hasOwnProperty.call(map, value)
+            )
+        ) {
+            return;
+        }
+
+        this.addUsage({ node, uri });
+    }
+
+    indexDefinitions({ uri, node }) {
+        if (!node || !uri) {
+            throw new Error(
+                `Expected to receive node and uri, but got: ${node} and ${uri}`
+            );
+        }
+
         const { NODE_TYPES } = require("./ast-helpers");
 
         if (
