@@ -10,14 +10,14 @@ class DefinitionProvider extends ServerBase {
             return this.handleFileSpacebarsHTML({ uri, position });
         }
 
-        if (this.isFileSpacebarsJS(uri)) {
-            return this.handleFileSpacebarsJS({ uri, position });
+        if (this.isFileJS(uri)) {
+            return this.handleFileJS({ uri, position });
         }
 
         return;
     }
 
-    handleFileSpacebarsJS({ uri, position }) {
+    handleFileJS({ uri, position }) {
         const { astWalker } = this.indexer.getFileInfo(uri);
 
         const nodeAtPosition = astWalker.getSymbolAtPosition(position);
@@ -28,6 +28,21 @@ class DefinitionProvider extends ServerBase {
 
         const { NODE_TYPES, NODE_NAMES } = require("./ast-helpers");
         const { Location, Range } = require("vscode-languageserver");
+
+        // If it's a string literal, we check for methods and publications
+        if (nodeAtPosition.type === NODE_TYPES.LITERAL) {
+            const literalValue = nodeAtPosition.value;
+            const { node: { loc: { start, end } = {} } = {}, uri } =
+                this.indexer.stringLiteralsIndexer.getLiteralInfo(literalValue);
+            if (!start || !end || !uri) {
+                console.warn(`Didn't find definition for ${nodeAtPosition}`);
+            }
+
+            return Location.create(
+                uri.path,
+                Range.create(start.line, start.column, end.line, end.column)
+            );
+        }
 
         // If is a helper that we want to find on the HTML
         if (nodeAtPosition.type === NODE_TYPES.IDENTIFIER) {
@@ -275,6 +290,7 @@ class DefinitionProvider extends ServerBase {
 
         const helperName =
             (typeof symbol === "string" && symbol) ||
+            symbol.parts?.[0] ||
             symbol.path?.parts?.[0] ||
             symbol.path?.original ||
             symbol.original;

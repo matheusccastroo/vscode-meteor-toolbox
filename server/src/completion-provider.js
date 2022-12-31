@@ -22,7 +22,7 @@ class CompletionProvider extends ServerBase {
             return;
         }
 
-        if (this.isFileSpacebarsJS(uri)) {
+        if (this.isFileJS(uri)) {
             return this.handleJsCompletion({ uri, position });
         }
 

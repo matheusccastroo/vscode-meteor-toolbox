@@ -19,7 +19,6 @@ class AstWalker {
         this.walkUntil((node) => {
             if (node.loc && this.isSymbolInPositionRange(position, node.loc)) {
                 symbol = node;
-                this.stopWalking();
             }
         });
 

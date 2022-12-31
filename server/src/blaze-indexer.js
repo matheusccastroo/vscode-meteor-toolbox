@@ -138,6 +138,7 @@ class BlazeIndexer {
     getHelperFromTemplateName(templateName, helperName) {
         const _name =
             (typeof helperName === "string" && helperName) ||
+            helperName.parts?.[0] ||
             helperName.path?.parts?.[0] ||
             helperName.path?.original ||
             helperName.original;

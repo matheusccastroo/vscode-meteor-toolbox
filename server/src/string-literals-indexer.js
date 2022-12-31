@@ -49,15 +49,15 @@ class StringLiteralIndexer {
         this.usageMap[value].push({ node, uri, entryKey });
     }
 
-    addStringLiteralToMap({ type, value, loc }, isMethod) {
+    addStringLiteralToMap({ node, isMethod = false, uri }) {
         const { NODE_TYPES } = require("./ast-helpers");
 
-        if (type !== NODE_TYPES.LITERAL || !value || !loc) {
+        if (!node || node.type !== NODE_TYPES.LITERAL) {
             return;
         }
 
         const toAdd = isMethod ? this.methodsMap : this.publicationsMap;
-        toAdd[value] = loc;
+        toAdd[node.value] = { node, uri };
 
         return true;
     }
@@ -225,10 +225,11 @@ class StringLiteralIndexer {
         return this.handleStringLiterals({
             node,
             isMethod,
+            uri,
         });
     }
 
-    handleStringLiterals({ node, isMethod }) {
+    handleStringLiterals({ node, isMethod, uri }) {
         const nodeArguments = node.arguments;
         if (!Array.isArray(nodeArguments) || !nodeArguments.length) {
             return;
@@ -240,7 +241,7 @@ class StringLiteralIndexer {
         for (const arg of nodeArguments) {
             // If it's not for methods, and we already found the string literal,
             // then we have the publication name.
-            if (!isMethod && this.addStringLiteralToMap(arg)) {
+            if (!isMethod && this.addStringLiteralToMap({ node: arg, uri })) {
                 break;
             }
 
@@ -263,12 +264,21 @@ class StringLiteralIndexer {
                 const isValidatedMethod =
                     key?.name ===
                     METEOR_SUPPORTED_PACKAGES_IDENTIFIER.VALIDATED_METHODS.KEY;
-                this.addStringLiteralToMap(
-                    isValidatedMethod ? value : key,
-                    isMethod
-                );
+                this.addStringLiteralToMap({
+                    node: isValidatedMethod ? value : key,
+                    isMethod,
+                    uri,
+                });
             }
         }
+    }
+
+    getLiteralInfo(key) {
+        if (!key || typeof key !== "string") {
+            throw new Error(`Expected to receive key, but got: ${key}`);
+        }
+
+        return this.methodsMap[key] || this.publicationsMap[key] || {};
     }
 }
 

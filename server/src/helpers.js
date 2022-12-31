@@ -38,7 +38,7 @@ class ServerBase {
         );
     }
 
-    isFileSpacebarsJS = (uri) => {
+    isFileJS = (uri) => {
         return (
             this.getFileExtension(uri) ===
             ServerBase.SPACEBARS_FILES_EXTENSION.JS_TEMPLATE
