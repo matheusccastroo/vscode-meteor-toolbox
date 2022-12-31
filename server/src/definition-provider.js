@@ -32,7 +32,8 @@ class DefinitionProvider extends ServerBase {
         // If is a helper that we want to find on the HTML
         if (nodeAtPosition.type === NODE_TYPES.IDENTIFIER) {
             const helperToSearch = nodeAtPosition.name;
-            const indexArray = this.indexer.htmlUsageMap[helperToSearch];
+            const indexArray =
+                this.indexer.blazeIndexer.htmlUsageMap[helperToSearch];
             if (!indexArray) {
                 console.warn(`Didn't find helpers for ${nodeAtPosition}`);
                 return;
@@ -57,7 +58,7 @@ class DefinitionProvider extends ServerBase {
         }
 
         // If is a template we want to show in HTML
-        const index = this.indexer.getTemplateInfo(nodeAtPosition);
+        const index = this.indexer.blazeIndexer.getTemplateInfo(nodeAtPosition);
         if (!index) return;
 
         const { start, end } = index.node.loc;
@@ -69,7 +70,7 @@ class DefinitionProvider extends ServerBase {
     }
 
     handleFileSpacebarsHTML({ uri, position }) {
-        const { AstWalker, NODE_TYPES } = require("./ast-helpers");
+        const { AstWalker } = require("./ast-helpers");
         const htmlWalker = new AstWalker(
             this.getFileContent(uri),
             require("@handlebars/parser").parse
@@ -128,7 +129,7 @@ class DefinitionProvider extends ServerBase {
                 ? templateNameOrNode
                 : templateNameOrNode.name.original;
 
-        const { TAG_NAMES } = require("./helpers");
+        const { TAG_NAMES } = require("./constants");
         // Was the template referenced declared on the same HTML file?
         return htmlJs.find(
             (tag) =>
@@ -248,7 +249,8 @@ class DefinitionProvider extends ServerBase {
         /**
          * OK, we need to search for the template.
          */
-        const { uri: templateUri } = this.indexer.getTemplateInfo(symbol);
+        const { uri: templateUri } =
+            this.indexer.blazeIndexer.getTemplateInfo(symbol);
 
         /**
          * Well, we tried but we didn't find anything useful.
@@ -318,7 +320,7 @@ class DefinitionProvider extends ServerBase {
             }
         };
 
-        const { TAG_NAMES } = require("./helpers");
+        const { TAG_NAMES } = require("./constants");
         if (Array.isArray(htmlJs)) {
             return htmlJs.find((htmlTag) => {
                 // Helpers are used only on template tags
@@ -344,7 +346,7 @@ class DefinitionProvider extends ServerBase {
             );
         }
 
-        const helper = this.indexer.getHelperFromTemplateName(
+        const helper = this.indexer.blazeIndexer.getHelperFromTemplateName(
             templateName,
             symbol
         );

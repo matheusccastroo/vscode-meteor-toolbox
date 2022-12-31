@@ -107,6 +107,8 @@ const NODE_TYPES = {
     OBJECT_EXPRESSION: "ObjectExpression",
     PROPERTY: "Property",
     CALL_EXPRESSION: "CallExpression",
+    LITERAL: "Literal",
+    NEW_EXPRESSION: "NewExpression",
 };
 
 const NODE_NAMES = {

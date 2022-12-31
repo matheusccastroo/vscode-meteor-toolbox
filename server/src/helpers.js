@@ -80,25 +80,6 @@ class ServerBase {
     }
 }
 
-const TAG_NAMES = {
-    TEMPLATE: "template",
-};
-
-const FILE_EXTENSIONS = {
-    HTML: ".html",
-    JS: ".js",
-    TS: ".ts",
-};
-
-const TEMPLATE_CALLERS = {
-    HELPERS: "helpers",
-    ON_CREATED: "onCreated",
-    ON_RENDERED: "onRendered",
-};
-
 module.exports = {
     ServerBase,
-    TAG_NAMES,
-    FILE_EXTENSIONS,
-    TEMPLATE_CALLERS,
 };
