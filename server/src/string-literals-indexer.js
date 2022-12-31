@@ -11,17 +11,19 @@
  */
 class StringLiteralIndexer {
     constructor() {
-        this.stringLiteralsUsageMap = {};
+        this.methodsMap = {};
+        this.publicationsMap = {};
     }
 
-    addStringLiteralToMap({ type, value, loc }) {
+    addStringLiteralToMap({ type, value, loc }, isMethod) {
         const { NODE_TYPES } = require("./ast-helpers");
 
         if (type !== NODE_TYPES.LITERAL || !value || !loc) {
             return;
         }
 
-        this.stringLiteralsUsageMap[value] = loc;
+        const toAdd = isMethod ? this.methodsMap : this.publicationsMap;
+        toAdd[value] = loc;
 
         return true;
     }
@@ -104,7 +106,7 @@ class StringLiteralIndexer {
         if (
             calleeType == NODE_TYPES.IDENTIFIER &&
             calleeName ===
-                METEOR_SUPPORTED_PACKAGES_IDENTIFIER.VALIDATED_METHODS
+                METEOR_SUPPORTED_PACKAGES_IDENTIFIER.VALIDATED_METHODS.NAME
         ) {
             return true;
         }
@@ -196,7 +198,10 @@ class StringLiteralIndexer {
                 const isValidatedMethod =
                     key?.name ===
                     METEOR_SUPPORTED_PACKAGES_IDENTIFIER.VALIDATED_METHODS.KEY;
-                this.addStringLiteralToMap(isValidatedMethod ? value : key);
+                this.addStringLiteralToMap(
+                    isValidatedMethod ? value : key,
+                    isMethod
+                );
             }
         }
     }
