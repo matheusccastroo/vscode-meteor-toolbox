@@ -44,7 +44,7 @@ class DefinitionProvider extends ServerBase {
 
         return Location.create(
             literalUri.path,
-            Range.create(start.line, start.column, end.line, end.column)
+            Range.create(start.line - 1, start.column, end.line - 1, end.column)
         );
     }
 
@@ -244,6 +244,7 @@ class DefinitionProvider extends ServerBase {
 
         const { Location, Range } = require("vscode-languageserver");
 
+        // TODO -> Handle stateless templates defined just on HTML.
         return Location.create(
             this.parseUri(templateUri).fsPath.replace(".html", ".js"),
             Range.create(0, 0, 0, 0)
@@ -350,7 +351,7 @@ class DefinitionProvider extends ServerBase {
         // TODO -> Should we check if the JS file exists?
         return Location.create(
             this.parseUri(uri).fsPath.replace(".html", ".js"),
-            Range.create(start.line, start.column, end.line, end.column)
+            Range.create(start.line - 1, start.column, end.line - 1, end.column)
         );
     }
 }

@@ -78,11 +78,13 @@ class Indexer extends ServerBase {
             );
         }
 
+        let previousNode;
         astWalker.walkUntil((node) => {
             this.stringLiteralsIndexer.indexDefinitions({ uri, node });
-            this.stringLiteralsIndexer.indexUsage({ uri, node });
+            this.stringLiteralsIndexer.indexUsage({ uri, node, previousNode });
 
             this.blazeIndexer.indexHelpers(node);
+            previousNode = node;
         });
     }
 

@@ -166,7 +166,7 @@ class StringLiteralIndexer {
         );
     }
 
-    indexUsage({ node, uri }) {
+    indexUsage({ node, uri, previousNode = {} }) {
         if (!node || !uri) {
             throw new Error(
                 `Expected to receive node and uri, but got: ${node} and ${uri}`
@@ -176,7 +176,13 @@ class StringLiteralIndexer {
         const { NODE_TYPES } = require("./ast-helpers");
 
         const { type, value } = node;
-        if (type !== NODE_TYPES.LITERAL) {
+        const { type: previousType } = previousNode;
+        // If the type of the previous node is a property, then we don't want
+        // to index this node, since it's the declaration of the method.
+        if (
+            type !== NODE_TYPES.LITERAL ||
+            (previousType && previousType === NODE_TYPES.PROPERTY)
+        ) {
             return;
         }
 

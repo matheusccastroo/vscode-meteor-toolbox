@@ -35,7 +35,12 @@ class ReferencesProvider extends ServerBase {
 
                 return Location.create(
                     uri.path,
-                    Range.create(start.line, start.column, end.line, end.column)
+                    Range.create(
+                        start.line - 1,
+                        start.column,
+                        end.line - 1,
+                        end.column
+                    )
                 );
             });
         }
@@ -54,9 +59,10 @@ class ReferencesProvider extends ServerBase {
             return indexArray.map(({ node, uri }) => {
                 const { start, end } = node.loc;
 
+                const line = start.line - 1;
                 return Location.create(
                     uri.path,
-                    Range.create(start.line, start.column, end.line, end.column)
+                    Range.create(line, start.column, line, end.column)
                 );
             });
         }

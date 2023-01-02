@@ -101,7 +101,7 @@ class BlazeIndexer {
         const { type, params, original, path, name } = node;
         if (type === NODE_TYPES.MUSTACHE_STATEMENT) {
             return this.addUsage({
-                node,
+                node: path,
                 uri,
                 key: path.head,
             });
@@ -109,7 +109,7 @@ class BlazeIndexer {
 
         // Index template tags usage {{> templateName}}
         if (type === NODE_TYPES.PARTIAL_STATEMENT && name) {
-            return this.addUsage({ node, uri, key: name.original });
+            return this.addUsage({ node: name, uri, key: name.original });
         }
 
         if (
@@ -118,7 +118,11 @@ class BlazeIndexer {
             !!params.length
         ) {
             const firstParam = params[0];
-            return this.addUsage({ node, uri, key: firstParam.original });
+            return this.addUsage({
+                node: firstParam,
+                uri,
+                key: firstParam.original,
+            });
         }
 
         // Index <template name="templateName"> tags.
