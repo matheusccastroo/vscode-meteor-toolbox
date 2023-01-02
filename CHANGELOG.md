@@ -4,6 +4,12 @@ All notable changes to the "meteor-dev" extension will be documented in this fil
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [02/01/23]
+
+-   Add support for Meteor methods and publications jump to definition and references.
+-   Add support for `ValidatedMethod` and `PublishComposite` packages.
+-   Use the correct request when handling references.
+
 ## [24/11/22]
 
 -   Add option to ignore directories for indexing on the extension settings.
