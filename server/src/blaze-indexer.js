@@ -93,18 +93,23 @@ class BlazeIndexer {
         }
     }
 
-    indexHelpersUsageAndTemplateDefinitions({ uri, node }) {
+    indexHelpersUsageAndTemplates({ uri, node }) {
         if (!node || !uri) return;
 
         const { NODE_TYPES } = require("./ast-helpers");
 
-        const { type, params, original, path } = node;
+        const { type, params, original, path, name } = node;
         if (type === NODE_TYPES.MUSTACHE_STATEMENT) {
             return this.addUsage({
                 node,
                 uri,
                 key: path.head,
             });
+        }
+
+        // Index template tags usage {{> templateName}}
+        if (type === NODE_TYPES.PARTIAL_STATEMENT && name) {
+            return this.addUsage({ node, uri, key: name.original });
         }
 
         if (
@@ -118,23 +123,18 @@ class BlazeIndexer {
 
         // Index <template name="templateName"> tags.
         if (
-            type === NODE_TYPES.CONTENT_STATEMENT &&
-            typeof original === "string"
+            type !== NODE_TYPES.CONTENT_STATEMENT ||
+            typeof original !== "string"
         ) {
-            const regex = /template name=[\"\'](.*)[\"\']/g;
-            const matches = regex.exec(original);
-
-            if (!matches || !matches.length) return;
-
-            const existingValues = this.templateIndexMap[matches[1]] || [];
-            this.templateIndexMap[matches[1]] = [
-                ...existingValues,
-                {
-                    node,
-                    uri,
-                },
-            ];
+            return;
         }
+
+        const regex = /template name=[\"\'](.*)[\"\']/g;
+        const matches = regex.exec(original);
+
+        if (!matches || !matches.length) return;
+
+        this.templateIndexMap[matches[1]] = { node, uri };
     }
 
     getHelperFromTemplateName(templateName, helperName) {
@@ -171,7 +171,7 @@ class BlazeIndexer {
             );
         }
 
-        return this.templateIndexMap[_name];
+        return this.templateIndexMap[_name] || {};
     }
 
     reset() {

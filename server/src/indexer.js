@@ -64,7 +64,7 @@ class Indexer extends ServerBase {
         }
 
         astWalker.walkUntil((node) => {
-            this.blazeIndexer.indexHelpersUsageAndTemplateDefinitions({
+            this.blazeIndexer.indexHelpersUsageAndTemplates({
                 uri,
                 node,
             });
