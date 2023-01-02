@@ -351,7 +351,11 @@ class DefinitionProvider extends ServerBase {
         const { start, end } = helper || {};
         if (!start || !end) {
             console.warn(
-                `Didn't found helper for symbol ${symbol.path.original}`
+                `Didn't found helper for symbol ${JSON.stringify(
+                    symbol,
+                    undefined,
+                    2
+                )}`
             );
             return;
         }
