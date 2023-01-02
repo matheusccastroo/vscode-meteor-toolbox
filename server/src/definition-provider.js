@@ -30,7 +30,17 @@ class DefinitionProvider extends ServerBase {
         const { Location, Range } = require("vscode-languageserver");
 
         if (nodeAtPosition.type !== NODE_TYPES.LITERAL) {
-            return;
+            const { start, end } = nodeAtPosition.loc;
+
+            return Location.create(
+                this.parseUri(uri).path,
+                Range.create(
+                    start.line - 1,
+                    start.column,
+                    end.line - 1,
+                    end.column
+                )
+            );
         }
 
         // If it's a string literal, we check for methods and publications

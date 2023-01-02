@@ -13,7 +13,13 @@ class ReferencesProvider extends ServerBase {
         const { astWalker } = this.indexer.getFileInfo(uri);
         const nodeAtPosition = astWalker.getSymbolAtPosition(position);
         if (!nodeAtPosition) {
-            console.warn("NodeAtPosition not found");
+            console.warn(
+                `Nothing found for the specified position: ${JSON.stringify(
+                    position,
+                    undefined,
+                    2
+                )}`
+            );
             return;
         }
 
@@ -45,27 +51,33 @@ class ReferencesProvider extends ServerBase {
             });
         }
 
-        // This applies to helpers and template references search
-        if (nodeAtPosition.type === NODE_TYPES.IDENTIFIER) {
-            const nameToSearch = nodeAtPosition.name;
-            const indexArray =
-                this.indexer.blazeIndexer.htmlUsageMap[nameToSearch] ||
-                this.indexer.blazeIndexer.getTemplateInfo(nameToSearch);
-            if (!indexArray) {
-                console.warn(`Didn't find anything for ${nameToSearch}`);
-                return;
-            }
-
-            return indexArray.map(({ node, uri }) => {
-                const { start, end } = node.loc;
-
-                const line = start.line - 1;
-                return Location.create(
-                    uri.path,
-                    Range.create(line, start.column, line, end.column)
-                );
-            });
+        if (nodeAtPosition.type !== NODE_TYPES.IDENTIFIER) {
+            return;
         }
+
+        // This applies to helpers and template references search
+        const nameToSearch = nodeAtPosition.name;
+        const indexArray =
+            this.indexer.blazeIndexer.htmlUsageMap[nameToSearch] ||
+            this.indexer.blazeIndexer.getTemplateInfo(nameToSearch);
+        if (!Array.isArray(indexArray)) {
+            console.warn(`Didn't find anything for ${nameToSearch}`);
+            return;
+        }
+
+        return indexArray.map(({ node, uri }) => {
+            const { start, end } = node.loc;
+
+            return Location.create(
+                uri.path,
+                Range.create(
+                    start.line - 1,
+                    start.column,
+                    end.line - 1,
+                    end.column
+                )
+            );
+        });
     }
 }
 
