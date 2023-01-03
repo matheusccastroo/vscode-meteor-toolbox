@@ -1,0 +1,17 @@
+{
+    "name": "typescript-meteor-toolbox-plugin",
+    "version": "0.0.1",
+    "license": "MIT",
+    "main": "./src/index",
+    "dependencies": {
+        "typescript": "^4.4.3"
+    },
+    "contributors": [
+		{
+			"name": "Matheus Castro"
+		},
+		{
+			"name": "Renan Castro"
+		}
+	]
+}
