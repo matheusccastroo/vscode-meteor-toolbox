@@ -87,7 +87,7 @@ class ServerInstance {
             this.indexer.onDidChangeConfiguration(...params)
         );
         // TODO -> implement completion resolver?.
-        // this.connection.onCompletionResolve(() => {});
+        this.connection.onCompletionResolve(() => {});
 
         this.documents.listen(this.connection);
 
