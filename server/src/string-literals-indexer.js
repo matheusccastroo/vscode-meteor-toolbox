@@ -176,12 +176,20 @@ class StringLiteralIndexer {
         const { NODE_TYPES } = require("./ast-helpers");
 
         const { type, value } = node;
-        const { type: previousType } = previousNode;
+        const { type: previousType, name: previousName } = previousNode;
+
+        const isMethodDeclaration =
+            previousType && previousType === NODE_TYPES.PROPERTY;
+        const isPublicationDeclaration =
+            previousType &&
+            previousType === NODE_TYPES.IDENTIFIER &&
+            ["publish", "publishComposite"].includes(previousName);
         // If the type of the previous node is a property, then we don't want
         // to index this node, since it's the declaration of the method.
         if (
             type !== NODE_TYPES.LITERAL ||
-            (previousType && previousType === NODE_TYPES.PROPERTY)
+            isMethodDeclaration ||
+            isPublicationDeclaration
         ) {
             return;
         }

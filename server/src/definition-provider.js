@@ -29,9 +29,22 @@ class DefinitionProvider extends ServerBase {
         const { NODE_TYPES } = require("./ast-helpers");
         const { Location, Range } = require("vscode-languageserver");
 
+        /**
+         * If it's not a literal, then we want to return the node location because
+         * this will trigger the reference request, which is probably what we want here.
+         */
         if (nodeAtPosition.type !== NODE_TYPES.LITERAL) {
-            const { start, end } = nodeAtPosition.loc;
+            /**
+             * This is a "hack": as we want the references, we need to return the current
+             * node location. The problem is that this add unnecessary "definitions" sometimes.
+             * To get around that, we check if we are searching for a template or helper.
+             */
+            if (!this.indexer.blazeIndexer.htmlUsageMap[nodeAtPosition.name]) {
+                console.warn(`Didn't find helpers for ${nodeAtPosition}`);
+                return;
+            }
 
+            const { start, end } = nodeAtPosition.loc;
             return Location.create(
                 this.parseUri(uri).path,
                 Range.create(

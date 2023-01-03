@@ -23,7 +23,7 @@ class ReferencesProvider extends ServerBase {
             return;
         }
 
-        const { NODE_TYPES, NODE_NAMES } = require("./ast-helpers");
+        const { NODE_TYPES } = require("./ast-helpers");
         const { Location, Range } = require("vscode-languageserver");
 
         // If it's a string literal, we check for methods and publications references
