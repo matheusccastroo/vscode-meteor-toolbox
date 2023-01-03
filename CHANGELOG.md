@@ -9,6 +9,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 -   Add support for Meteor methods and publications jump to definition and references.
 -   Add support for `ValidatedMethod` and `PublishComposite` packages.
 -   Use the correct request when handling references.
+-   Create `typescript-meteor-toolbox-plugin` to fix some conflicts between our LS and the TypeScript/JavaScript LS.
 
 ## [24/11/22]
 

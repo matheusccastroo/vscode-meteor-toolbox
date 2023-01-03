@@ -1,7 +1,7 @@
 {
 	"name": "meteor-language-server",
 	"description": "Meteor Language Server",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"contributors": [
 		{
 			"name": "Matheus Castro"
