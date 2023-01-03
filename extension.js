@@ -7,6 +7,7 @@ const {
     toggleAutoRunPackagesWatcher,
     clearMeteorBuildCache,
     isUsingMeteorPackage,
+    isMeteorProject,
 } = require("./src/helpers");
 const {
     addImportedPackagesToJsConfig,
@@ -35,6 +36,13 @@ const disposeWatchers = () =>
  * @param {vscode.ExtensionContext} context
  */
 async function activate(context) {
+    if (!(await isMeteorProject())) {
+        console.warn(
+            "Not in a meteor project, not starting Meteor Toolbox extension..."
+        );
+        return;
+    }
+
     console.log("Starting Meteor Toolbox extension...");
 
     addDebugAndRunOptions();
