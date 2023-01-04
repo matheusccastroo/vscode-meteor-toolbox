@@ -1,28 +1,13 @@
 const { ServerBase } = require("./helpers");
 
-const TRIGGER_CHARACTERS = {
-    DOT: ".",
-};
-
 class CompletionProvider extends ServerBase {
     constructor(serverInstance, documentsInstance, rootUri, indexer) {
         super(serverInstance, documentsInstance, rootUri, indexer);
     }
 
     // TODO -> Should we trigger only with triggerCharacter?
-    onCompletionRequest({
-        textDocument: { uri },
-        context: { triggerCharacter },
-        position,
-    }) {
-        if (
-            !triggerCharacter ||
-            !Object.values(TRIGGER_CHARACTERS).includes(triggerCharacter)
-        ) {
-            return;
-        }
-
-        if (this.isFileSpacebarsJS(uri)) {
+    onCompletionRequest({ textDocument: { uri }, position }) {
+        if (this.isFileJS(uri)) {
             return this.handleJsCompletion({ uri, position });
         }
 
@@ -58,19 +43,19 @@ class CompletionProvider extends ServerBase {
         if (
             nodeAtPosition.type !== NODE_TYPES.IDENTIFIER ||
             nodeAtPosition.name !== NODE_NAMES.TEMPLATE
-        )
+        ) {
             return;
+        }
 
         const {
             CompletionItemKind,
             CompletionItem,
         } = require("vscode-languageserver");
 
-        return Object.keys(this.indexer.templateIndexMap).map(
+        return Object.keys(this.indexer.blazeIndexer.templateIndexMap).map(
             (templateName) => ({
                 ...CompletionItem.create(templateName),
                 textEdit: templateName,
-                sortText: "11",
                 kind: CompletionItemKind.Class,
                 detail: NODE_NAMES.TEMPLATE,
             })
@@ -85,7 +70,7 @@ class CompletionProvider extends ServerBase {
         const { NODE_NAMES } = require("./ast-helpers");
 
         // TODO -> Offer completion of helpers.
-        return Object.keys(this.indexer.templateIndexMap).map(
+        return Object.keys(this.indexer.blazeIndexer.templateIndexMap).map(
             (templateName) => ({
                 ...CompletionItem.create(templateName),
                 textEdit: templateName,

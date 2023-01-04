@@ -10,14 +10,14 @@ class DefinitionProvider extends ServerBase {
             return this.handleFileSpacebarsHTML({ uri, position });
         }
 
-        if (this.isFileSpacebarsJS(uri)) {
-            return this.handleFileSpacebarsJS({ uri, position });
+        if (this.isFileJS(uri)) {
+            return this.handleFileJS({ uri, position });
         }
 
         return;
     }
 
-    handleFileSpacebarsJS({ uri, position }) {
+    handleFileJS({ uri, position }) {
         const { astWalker } = this.indexer.getFileInfo(uri);
 
         const nodeAtPosition = astWalker.getSymbolAtPosition(position);
@@ -26,50 +26,53 @@ class DefinitionProvider extends ServerBase {
             return;
         }
 
-        const { NODE_TYPES, NODE_NAMES } = require("./ast-helpers");
+        const { NODE_TYPES } = require("./ast-helpers");
         const { Location, Range } = require("vscode-languageserver");
 
-        // If is a helper that we want to find on the HTML
-        if (nodeAtPosition.type === NODE_TYPES.IDENTIFIER) {
-            const helperToSearch = nodeAtPosition.name;
-            const indexArray = this.indexer.htmlUsageMap[helperToSearch];
-            if (!indexArray) {
+        /**
+         * If it's not a literal, then we want to return the node location because
+         * this will trigger the reference request, which is probably what we want here.
+         */
+        if (nodeAtPosition.type !== NODE_TYPES.LITERAL) {
+            /**
+             * This is a "hack": as we want the references, we need to return the current
+             * node location. The problem is that this add unnecessary "definitions" sometimes.
+             * To get around that, we check if we are searching for a template or helper.
+             */
+            if (!this.indexer.blazeIndexer.htmlUsageMap[nodeAtPosition.name]) {
                 console.warn(`Didn't find helpers for ${nodeAtPosition}`);
                 return;
             }
 
-            return indexArray.map(({ node, uri }) => {
-                const { start, end } = node.loc;
-
-                return Location.create(
-                    uri.path,
-                    Range.create(start.line, start.column, end.line, end.column)
-                );
-            });
+            const { start, end } = nodeAtPosition.loc;
+            return Location.create(
+                this.parseUri(uri).path,
+                Range.create(
+                    start.line - 1,
+                    start.column,
+                    end.line - 1,
+                    end.column
+                )
+            );
         }
 
-        // We just support helpers and templates for now
-        if (
-            nodeAtPosition.object?.type !== NODE_TYPES.MEMBER_EXPRESSION ||
-            nodeAtPosition.object?.object?.name !== NODE_NAMES.TEMPLATE
-        ) {
+        // If it's a string literal, we check for methods and publications
+        const literalValue = nodeAtPosition.value;
+        const { node: { loc: { start, end } = {} } = {}, uri: literalUri } =
+            this.indexer.stringLiteralsIndexer.getLiteralInfo(literalValue);
+        if (!start || !end || !literalUri) {
+            console.warn(`Didn't find definition for ${nodeAtPosition}`);
             return;
         }
 
-        // If is a template we want to show in HTML
-        const index = this.indexer.getTemplateInfo(nodeAtPosition);
-        if (!index) return;
-
-        const { start, end } = index.node.loc;
-
         return Location.create(
-            index.uri.path,
-            Range.create(start.line, start.column, end.line, end.column)
+            literalUri.path,
+            Range.create(start.line - 1, start.column, end.line - 1, end.column)
         );
     }
 
     handleFileSpacebarsHTML({ uri, position }) {
-        const { AstWalker, NODE_TYPES } = require("./ast-helpers");
+        const { AstWalker } = require("./ast-helpers");
         const htmlWalker = new AstWalker(
             this.getFileContent(uri),
             require("@handlebars/parser").parse
@@ -77,7 +80,13 @@ class DefinitionProvider extends ServerBase {
         const htmlSymbol = htmlWalker.getSymbolAtPosition(position);
 
         if (!htmlSymbol) {
-            console.warn("HTML Symbol not found");
+            console.warn(
+                `HTML Symbol not found for position ${JSON.stringify(
+                    position,
+                    undefined,
+                    2
+                )}. File uri is: ${uri}`
+            );
             return;
         }
 
@@ -128,7 +137,7 @@ class DefinitionProvider extends ServerBase {
                 ? templateNameOrNode
                 : templateNameOrNode.name.original;
 
-        const { TAG_NAMES } = require("./helpers");
+        const { TAG_NAMES } = require("./constants");
         // Was the template referenced declared on the same HTML file?
         return htmlJs.find(
             (tag) =>
@@ -248,7 +257,8 @@ class DefinitionProvider extends ServerBase {
         /**
          * OK, we need to search for the template.
          */
-        const { uri: templateUri } = this.indexer.getTemplateInfo(symbol);
+        const { uri: templateUri } =
+            this.indexer.blazeIndexer.getTemplateInfo(symbol);
 
         /**
          * Well, we tried but we didn't find anything useful.
@@ -257,6 +267,7 @@ class DefinitionProvider extends ServerBase {
 
         const { Location, Range } = require("vscode-languageserver");
 
+        // TODO -> Handle stateless templates defined just on HTML.
         return Location.create(
             this.parseUri(templateUri).fsPath.replace(".html", ".js"),
             Range.create(0, 0, 0, 0)
@@ -273,6 +284,7 @@ class DefinitionProvider extends ServerBase {
 
         const helperName =
             (typeof symbol === "string" && symbol) ||
+            symbol.parts?.[0] ||
             symbol.path?.parts?.[0] ||
             symbol.path?.original ||
             symbol.original;
@@ -318,7 +330,7 @@ class DefinitionProvider extends ServerBase {
             }
         };
 
-        const { TAG_NAMES } = require("./helpers");
+        const { TAG_NAMES } = require("./constants");
         if (Array.isArray(htmlJs)) {
             return htmlJs.find((htmlTag) => {
                 // Helpers are used only on template tags
@@ -344,7 +356,7 @@ class DefinitionProvider extends ServerBase {
             );
         }
 
-        const helper = this.indexer.getHelperFromTemplateName(
+        const helper = this.indexer.blazeIndexer.getHelperFromTemplateName(
             templateName,
             symbol
         );
@@ -352,7 +364,11 @@ class DefinitionProvider extends ServerBase {
         const { start, end } = helper || {};
         if (!start || !end) {
             console.warn(
-                `Didn't found helper for symbol ${symbol.path.original}`
+                `Didn't found helper for symbol ${JSON.stringify(
+                    symbol,
+                    undefined,
+                    2
+                )}`
             );
             return;
         }
@@ -362,7 +378,7 @@ class DefinitionProvider extends ServerBase {
         // TODO -> Should we check if the JS file exists?
         return Location.create(
             this.parseUri(uri).fsPath.replace(".html", ".js"),
-            Range.create(start.line, start.column, end.line, end.column)
+            Range.create(start.line - 1, start.column, end.line - 1, end.column)
         );
     }
 }

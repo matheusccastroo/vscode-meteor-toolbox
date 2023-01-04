@@ -129,6 +129,12 @@
                 "scopeName": "text.html.spacebars",
                 "path": "./spacebars/syntaxes/spacebars.tmLanguage.json"
             }
+        ],
+        "typescriptServerPlugins": [
+            {
+                "name": "typescript-meteor-toolbox-plugin",
+                "enableForWorkspaceTypeScriptVersions": true
+            }
         ]
     },
     "main": "./extension.js",
@@ -153,6 +159,7 @@
         "deepmerge": "^4.2.2",
         "json5": "^2.2.1",
         "lodash": "^4.17.21",
-        "vscode-languageclient": "8.0.2"
+        "vscode-languageclient": "8.0.2",
+        "typescript-meteor-toolbox-plugin": "./typescript-meteor-toolbox-plugin"
     }
 }

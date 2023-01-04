@@ -105,9 +105,30 @@ const clearMeteorBuildCache = async () => {
 
 const isWindows = () => process.platform === "win32";
 
+const isMeteorProject = async () => {
+    const projectRoot = Uri.joinPath(
+        workspace.workspaceFolders[0].uri,
+        ".meteor"
+    );
+
+    let exists;
+    try {
+        exists = !!(await workspace.fs.stat(projectRoot));
+    } catch (e) {
+        console.error(e);
+        exists = false;
+    }
+
+    return exists;
+};
+
 const isUsingMeteorPackage = async (pkgName) => {
     if (!pkgName || typeof pkgName !== "string") {
         throw new Error(`Invalid meteor package name, received: ${pkgName}`);
+    }
+
+    if (!(await isMeteorProject())) {
+        return;
     }
 
     const pkgFilesUri = Uri.joinPath(
@@ -127,4 +148,5 @@ module.exports = {
     isWindows,
     clearMeteorBuildCache,
     isUsingMeteorPackage,
+    isMeteorProject,
 };
