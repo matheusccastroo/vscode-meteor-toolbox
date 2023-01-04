@@ -99,6 +99,39 @@ const create = (info) => {
         return originalResult;
     };
 
+    // Fix template go to references conflict
+    proxy.getDefinitionAndBoundSpan = (fileName, position) => {
+        info.project.projectService.logger.info(
+            formatLog("Received getDefinitionAndBoundSpan request")
+        );
+
+        const originalResult = info.languageService.getDefinitionAndBoundSpan(
+            fileName,
+            position
+        );
+
+        const { findNode } = require("./utils");
+        const sourceFile = info.languageService
+            .getProgram()
+            .getSourceFile(fileName);
+
+        if (!sourceFile) {
+            return originalResult;
+        }
+
+        const node = findNode(sourceFile, position);
+        if (!node || !node.parent || !node.parent.expression) {
+            return originalResult;
+        }
+
+        const { expression } = node.parent;
+        if (expression?.escapedText.toLowerCase() === "template") {
+            originalResult.definitions = [];
+        }
+
+        return originalResult;
+    };
+
     return proxy;
 };
 
