@@ -66,17 +66,17 @@ const create = (info) => {
     };
 
     // Fix Template.templateName references request.
-    proxy.getDefinitionAndBoundSpan = (fileName, position) => {
+    proxy.getCompletionsAtPosition = (fileName, position, options) => {
         info.project.projectService.logger.info(
-            formatLog("Received getDefinitionAndBoundSpan request")
+            formatLog("Received getCompletionsAtPosition request")
         );
 
-        const originalResult = info.languageService.getDefinitionAndBoundSpan(
+        const originalResult = info.languageService.getCompletionsAtPosition(
             fileName,
-            position
+            position,
+            options
         );
 
-        const { findNode } = require("./utils");
         const sourceFile = info.languageService
             .getProgram()
             .getSourceFile(fileName);
@@ -85,14 +85,15 @@ const create = (info) => {
             return originalResult;
         }
 
+        const { findNode } = require("./utils");
         const node = findNode(sourceFile, position);
-        if (!node || !node.parent || !node.parent.expression) {
+        if (!node) {
             return originalResult;
         }
 
-        const { expression } = node.parent;
-        if (expression?.escapedText.toLowerCase() === "template") {
-            originalResult.definitions = [];
+        const escapedText = node.expression?.escapedText;
+        if (escapedText && escapedText.toLowerCase() === "template") {
+            originalResult.entries = [];
         }
 
         return originalResult;
