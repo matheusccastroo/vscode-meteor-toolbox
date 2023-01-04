@@ -16,15 +16,21 @@ Note: this extensions changes the `jsconfig.json` and `.vscode/launch.json`. Rem
 
 Meteor Toolbox is the only extension implementing a Blaze completion/definition provider. Check it in action:
 
-### Completion
+### Completions
 
-![completion](/images/template-completion.gif)
+![completion-template](/images/demo/demo-template-completion-items.gif)
 
-### Go to Definition
+![completion-meteor](/images/demo/demo-meteor-completion-items.gif)
 
-![goto-definition](/images/template-definition.gif)
+### Go to Definition and References
 
-And more...
+![goto-definition](/images/demo/demo-methods-definitions-and-references.gif)
+
+![goto-definition-templates](/images/demo/demo-blaze-template-definition.gif)
+
+![goto-references](/images/demo/demo-template-helpers-definitions-and-references.gif)
+
+And much more...
 
 ## Available commands
 
