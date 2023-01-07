@@ -12,7 +12,8 @@ class BlazeIndexer {
         this.templateIndexMap[templateName] =
             this.templateIndexMap[templateName] || {};
 
-        // Set JS uri too
+        // Set JS uri too - we need to do that to be able to infer the template from a given helper
+        // and file uri. It's used in getHelperFromTemplate() from this class.
         this.templateIndexMap[templateName].jsUri =
             this.templateIndexMap[templateName].jsUri || uri;
 
