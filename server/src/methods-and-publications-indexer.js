@@ -9,7 +9,7 @@
  *  1 - Meteor.publish("publication1", () => {...});
  *  2 - publishComposite("publication1", () => {...});
  */
-class StringLiteralIndexer {
+class MethodsAndPublicationsIndexer {
     constructor() {
         // Store definitions
         this.methodsMap = {};
@@ -49,15 +49,18 @@ class StringLiteralIndexer {
         this.usageMap[value].push({ node, uri, entryKey });
     }
 
-    addStringLiteralToMap({ node, isMethod = false, uri }) {
+    addDefinitionToMap({ node, isMethod = false, uri }) {
         const { NODE_TYPES } = require("./ast-helpers");
 
-        if (!node || node.type !== NODE_TYPES.LITERAL) {
+        if (
+            !node ||
+            ![NODE_TYPES.LITERAL, NODE_TYPES.IDENTIFIER].includes(node.type)
+        ) {
             return;
         }
 
         const toAdd = isMethod ? this.methodsMap : this.publicationsMap;
-        toAdd[node.value] = { node, uri };
+        toAdd[node.value || node.name] = { node, uri };
 
         return true;
     }
@@ -255,7 +258,7 @@ class StringLiteralIndexer {
         for (const arg of nodeArguments) {
             // If it's not for methods, and we already found the string literal,
             // then we have the publication name.
-            if (!isMethod && this.addStringLiteralToMap({ node: arg, uri })) {
+            if (!isMethod && this.addDefinitionToMap({ node: arg, uri })) {
                 break;
             }
 
@@ -271,14 +274,16 @@ class StringLiteralIndexer {
 
             for (const { type, key, value } of properties) {
                 // Acorn doesn't distinct between ObjectMethod and ObjectProperty, as Babel does.
-                if (type !== NODE_TYPES.PROPERTY) {
+                if (
+                    ![NODE_TYPES.PROPERTY, NODE_TYPES.IDENTIFIER].includes(type)
+                ) {
                     continue;
                 }
 
                 const isValidatedMethod =
                     key?.name ===
                     METEOR_SUPPORTED_PACKAGES_IDENTIFIER.VALIDATED_METHODS.KEY;
-                this.addStringLiteralToMap({
+                this.addDefinitionToMap({
                     node: isValidatedMethod ? value : key,
                     isMethod,
                     uri,
@@ -292,7 +297,7 @@ class StringLiteralIndexer {
             throw new Error(`Expected to receive key, but got: ${key}`);
         }
 
-        return this.methodsMap[key] || this.publicationsMap[key] || {};
+        return this.methodsMap[key] || this.publicationsMap[key];
     }
 
     getUsageInfo(key) {
@@ -300,7 +305,7 @@ class StringLiteralIndexer {
             throw new Error(`Expected to receive key, but got: ${key}`);
         }
 
-        return this.usageMap[key] || {};
+        return this.usageMap[key];
     }
 
     reset() {
@@ -310,4 +315,4 @@ class StringLiteralIndexer {
     }
 }
 
-module.exports = { StringLiteralIndexer };
+module.exports = { MethodsAndPublicationsIndexer };

@@ -26,21 +26,30 @@ class DefinitionProvider extends ServerBase {
             return;
         }
 
-        const { NODE_TYPES } = require("./ast-helpers");
         const { Location, Range } = require("vscode-languageserver");
 
-        /**
-         * If it's not a literal, then we want to return the node location because
-         * this will trigger the reference request, which is probably what we want here.
-         */
-        if (nodeAtPosition.type !== NODE_TYPES.LITERAL) {
+        const nodeKey = nodeAtPosition.value || nodeAtPosition.name;
+        if (!nodeKey) {
+            console.warn("No key found for node");
+            return;
+        }
+
+        const definitionInfo =
+            this.indexer.methodsAndPublicationsIndexer.getLiteralInfo(
+                nodeKey
+            ) ||
+            this.indexer.blazeIndexer.getHelperFromTemplate({
+                templateUri: this.parseUri(uri),
+                helper: nodeKey,
+            });
+        if (!definitionInfo) {
             /**
              * This is a "hack": as we want the references, we need to return the current
              * node location. The problem is that this add unnecessary "definitions" sometimes.
              * To get around that, we check if we are searching for a template or helper.
              */
             if (!this.indexer.blazeIndexer.htmlUsageMap[nodeAtPosition.name]) {
-                console.warn(`Didn't find helpers for ${nodeAtPosition}`);
+                console.warn(`Didn't find definitions for ${nodeAtPosition}`);
                 return;
             }
 
@@ -56,18 +65,18 @@ class DefinitionProvider extends ServerBase {
             );
         }
 
-        // If it's a string literal, we check for methods and publications
-        const literalValue = nodeAtPosition.value;
-        const { node: { loc: { start, end } = {} } = {}, uri: literalUri } =
-            this.indexer.stringLiteralsIndexer.getLiteralInfo(literalValue);
-        if (!start || !end || !literalUri) {
-            console.warn(`Didn't find definition for ${nodeAtPosition}`);
-            return;
-        }
+        const { start, end, node: { loc } = {}, uri: nodeUri } = definitionInfo;
+        const _start = start || loc.start;
+        const _end = end || loc.end;
 
         return Location.create(
-            literalUri.path,
-            Range.create(start.line - 1, start.column, end.line - 1, end.column)
+            nodeUri?.path || this.parseUri(uri).path,
+            Range.create(
+                _start.line - 1,
+                _start.column,
+                _end.line - 1,
+                _end.column
+            )
         );
     }
 
@@ -356,10 +365,10 @@ class DefinitionProvider extends ServerBase {
             );
         }
 
-        const helper = this.indexer.blazeIndexer.getHelperFromTemplateName(
+        const helper = this.indexer.blazeIndexer.getHelperFromTemplate({
             templateName,
-            symbol
-        );
+            helper: symbol,
+        });
 
         const { start, end } = helper || {};
         if (!start || !end) {

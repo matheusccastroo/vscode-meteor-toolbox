@@ -8,9 +8,13 @@ class BlazeIndexer {
         this.htmlUsageMap = {};
     }
 
-    addHelpersToMap({ templateName, helperName, value }) {
+    addHelpersToMap({ templateName, helperName, value, uri }) {
         this.templateIndexMap[templateName] =
             this.templateIndexMap[templateName] || {};
+
+        // Set JS uri too
+        this.templateIndexMap[templateName].jsUri =
+            this.templateIndexMap[templateName].jsUri || uri;
 
         this.templateIndexMap[templateName]["helpers"] =
             this.templateIndexMap[templateName]["helpers"] || {};
@@ -51,7 +55,7 @@ class BlazeIndexer {
         return this.htmlUsageMap[key].push({ node, uri, entryKey });
     }
 
-    indexHelpers(node) {
+    indexHelpers({ node, uri }) {
         const { NODE_TYPES } = require("./ast-helpers");
 
         if (!node || node.type !== NODE_TYPES.CALL_EXPRESSION) {
@@ -88,6 +92,7 @@ class BlazeIndexer {
                     templateName,
                     helperName: key.name,
                     value: loc,
+                    uri,
                 });
             }
         }
@@ -141,21 +146,37 @@ class BlazeIndexer {
         this.templateIndexMap[matches[1]] = { node, uri };
     }
 
-    getHelperFromTemplateName(templateName, helperName) {
+    getHelperFromTemplate({ templateName, helper, templateUri }) {
         const _name =
-            (typeof helperName === "string" && helperName) ||
-            helperName.parts?.[0] ||
-            helperName.path?.parts?.[0] ||
-            helperName.path?.original ||
-            helperName.original;
+            (typeof helper === "string" && helper) ||
+            helper.parts?.[0] ||
+            helper.path?.parts?.[0] ||
+            helper.path?.original ||
+            helper.original;
 
         if (!_name) {
             throw new Error(
-                `Expected to receive helperName, but got ${helperName}`
+                `Expected to receive helperName, but got ${helper}`
             );
         }
 
-        const indexMap = this.templateIndexMap[templateName];
+        let indexMap = this.templateIndexMap[templateName];
+        if (!indexMap && !!templateUri) {
+            const fromTemplate = Object.keys(this.templateIndexMap).find(
+                (k) => {
+                    if (!Object.hasOwnProperty.call(this.templateIndexMap, k)) {
+                        return;
+                    }
+
+                    const jsUri = this.templateIndexMap[k].jsUri;
+
+                    return jsUri && jsUri.path === templateUri.path;
+                }
+            );
+
+            indexMap = !!fromTemplate && this.templateIndexMap[fromTemplate];
+        }
+
         if (!indexMap || !Object.keys(indexMap.helpers).length) return;
 
         return indexMap.helpers[_name];

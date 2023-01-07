@@ -1,5 +1,7 @@
 const { ServerBase } = require("./helpers");
-const { StringLiteralIndexer } = require("./string-literals-indexer");
+const {
+    MethodsAndPublicationsIndexer,
+} = require("./methods-and-publications-indexer");
 const { BlazeIndexer } = require("./blaze-indexer");
 
 class Indexer extends ServerBase {
@@ -15,7 +17,8 @@ class Indexer extends ServerBase {
         this.ignoreDirs = [];
 
         this.blazeIndexer = new BlazeIndexer();
-        this.stringLiteralsIndexer = new StringLiteralIndexer();
+        this.methodsAndPublicationsIndexer =
+            new MethodsAndPublicationsIndexer();
     }
 
     async findUris(patterns) {
@@ -80,10 +83,14 @@ class Indexer extends ServerBase {
 
         let previousNode;
         astWalker.walkUntil((node) => {
-            this.stringLiteralsIndexer.indexDefinitions({ uri, node });
-            this.stringLiteralsIndexer.indexUsage({ uri, node, previousNode });
+            this.methodsAndPublicationsIndexer.indexDefinitions({ uri, node });
+            this.methodsAndPublicationsIndexer.indexUsage({
+                uri,
+                node,
+                previousNode,
+            });
 
-            this.blazeIndexer.indexHelpers(node);
+            this.blazeIndexer.indexHelpers({ node, uri });
             previousNode = node;
         });
     }
@@ -203,7 +210,7 @@ class Indexer extends ServerBase {
 
     async reindex() {
         console.info(`* Indexing project: ${this.rootUri}`);
-        [this.blazeIndexer, this.stringLiteralsIndexer].forEach((i) =>
+        [this.blazeIndexer, this.methodsAndPublicationsIndexer].forEach((i) =>
             i?.reset?.()
         );
         const { hasErrors, errors } = await this.loadSources();

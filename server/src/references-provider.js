@@ -26,46 +26,27 @@ class ReferencesProvider extends ServerBase {
         const { NODE_TYPES } = require("./ast-helpers");
         const { Location, Range } = require("vscode-languageserver");
 
-        // If it's a string literal, we check for methods and publications references
-        if (nodeAtPosition.type === NODE_TYPES.LITERAL) {
-            const literalValue = nodeAtPosition.value;
-            const usageInfoArray =
-                this.indexer.stringLiteralsIndexer.getUsageInfo(literalValue);
-            if (!Array.isArray(usageInfoArray) || !usageInfoArray.length) {
-                console.warn(`No references found for ${literalValue}`);
-                return;
-            }
-
-            return usageInfoArray.map(({ node, uri }) => {
-                const { start, end } = node.loc;
-
-                return Location.create(
-                    uri.path,
-                    Range.create(
-                        start.line - 1,
-                        start.column,
-                        end.line - 1,
-                        end.column
-                    )
-                );
-            });
-        }
-
-        if (nodeAtPosition.type !== NODE_TYPES.IDENTIFIER) {
+        if (
+            ![NODE_TYPES.LITERAL, NODE_TYPES.IDENTIFIER].includes(
+                nodeAtPosition.type
+            )
+        ) {
             return;
         }
 
-        // This applies to helpers and template references search
-        const nameToSearch = nodeAtPosition.name;
-        const indexArray =
-            this.indexer.blazeIndexer.htmlUsageMap[nameToSearch] ||
-            this.indexer.blazeIndexer.getTemplateInfo(nameToSearch);
-        if (!Array.isArray(indexArray)) {
-            console.warn(`Didn't find anything for ${nameToSearch}`);
+        // Find references for helpers, templateNames, and methods/publications.
+        const nodeKey = nodeAtPosition.value || nodeAtPosition.name;
+        const usageInfoArray =
+            this.indexer.methodsAndPublicationsIndexer.getUsageInfo(nodeKey) ||
+            this.indexer.blazeIndexer.htmlUsageMap[nodeKey] ||
+            this.indexer.blazeIndexer.getTemplateInfo(nodeKey);
+
+        if (!Array.isArray(usageInfoArray) || !usageInfoArray.length) {
+            console.warn(`No references found for ${nodeKey}`);
             return;
         }
 
-        return indexArray.map(({ node, uri }) => {
+        return usageInfoArray.map(({ node, uri }) => {
             const { start, end } = node.loc;
 
             return Location.create(
