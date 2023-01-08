@@ -36,10 +36,10 @@ const create = (info) => {
                 ({ textSpan, fileName, contextSpan }) =>
                     !(
                         fileName === definitionFileName &&
-                        contextSpan.start === definitionContextSpan.start &&
-                        contextSpan.length === definitionContextSpan.length &&
-                        textSpan.start === definitionTextSpan.start &&
-                        textSpan.length === definitionTextSpan.length
+                        contextSpan?.start === definitionContextSpan.start &&
+                        contextSpan?.length === definitionContextSpan.length &&
+                        textSpan?.start === definitionTextSpan.start &&
+                        textSpan?.length === definitionTextSpan.length
                     )
             );
 
@@ -92,7 +92,7 @@ const create = (info) => {
         }
 
         const escapedText = node.expression?.escapedText;
-        if (escapedText && escapedText.toLowerCase() === "template") {
+        if (escapedText?.toLowerCase?.() === "template") {
             originalResult.entries = [];
         }
 
@@ -125,7 +125,7 @@ const create = (info) => {
         }
 
         const { expression } = node.parent;
-        if (expression?.escapedText.toLowerCase() === "template") {
+        if (expression?.escapedText?.toLowerCase?.() === "template") {
             originalResult.definitions = [];
         }
 
