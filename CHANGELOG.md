@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [07/01/23]
 
 -   Fix issue where methods declared as an object property were not being properly indexed.
+-   Fix issue where references were not being correctly processed on `typescript-server-plugin`.
 
 ## [02/01/23]
 
