@@ -6,7 +6,6 @@ const {
 const {
     toggleAutoRunPackagesWatcher,
     clearMeteorBuildCache,
-    isUsingMeteorPackage,
     isMeteorProject,
 } = require("./src/helpers");
 const {
@@ -37,7 +36,7 @@ const disposeWatchers = () =>
  */
 async function activate(context) {
     if (!(await isMeteorProject())) {
-        console.warn(
+        console.error(
             "Not in a meteor project, not starting Meteor Toolbox extension..."
         );
         return;
@@ -127,12 +126,9 @@ async function activate(context) {
         }
     );
 
-    if (await isUsingMeteorPackage("blaze-html-templates")) {
-        console.log("Connecting to language server...");
-        context.subscriptions.push(
-            await connectToLanguageServer(context.asAbsolutePath)
-        );
-    }
+    context.subscriptions.push(
+        await connectToLanguageServer(context.asAbsolutePath)
+    );
 
     context.subscriptions.push(
         toggleAutoRunPackagesWatcherDisposable,

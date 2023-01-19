@@ -122,31 +122,11 @@ const isMeteorProject = async () => {
     return exists;
 };
 
-const isUsingMeteorPackage = async (pkgName) => {
-    if (!pkgName || typeof pkgName !== "string") {
-        throw new Error(`Invalid meteor package name, received: ${pkgName}`);
-    }
-
-    if (!(await isMeteorProject())) {
-        return;
-    }
-
-    const pkgFilesUri = Uri.joinPath(
-        workspace.workspaceFolders[0].uri,
-        ".meteor/packages"
-    );
-
-    const existingFileContent = await workspace.fs.readFile(pkgFilesUri);
-
-    return existingFileContent.includes(pkgName);
-};
-
 module.exports = {
     createFileFromScratch,
     appendToExistingFile,
     toggleAutoRunPackagesWatcher,
     isWindows,
     clearMeteorBuildCache,
-    isUsingMeteorPackage,
     isMeteorProject,
 };

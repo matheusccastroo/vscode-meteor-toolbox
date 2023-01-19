@@ -78,6 +78,33 @@ class ServerBase {
             encoding: "utf-8",
         });
     }
+
+    async isUsingMeteorPackage(packageName) {
+        if (!packageName || typeof packageName !== "string") {
+            throw new Error(
+                `Expected to receive packageName string, but got: ${packageName}`
+            );
+        }
+
+        const { Utils } = require("vscode-uri");
+        const packageFilesUri = Utils.joinPath(
+            this.rootUri,
+            ".meteor",
+            "packages"
+        );
+
+        try {
+            const fileContent = await this.getFileContentPromise(
+                packageFilesUri
+            );
+
+            return !!fileContent.match(new RegExp(`^${packageName}`, "gm"))
+                ?.length;
+        } catch (e) {
+            console.error(e);
+            return false;
+        }
+    }
 }
 
 module.exports = {

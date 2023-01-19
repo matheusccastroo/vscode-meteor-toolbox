@@ -74,7 +74,7 @@ class Indexer extends ServerBase {
         });
     }
 
-    indexJsFile({ uri, astWalker }) {
+    indexJsFile({ uri, astWalker, shouldIndexBlaze = true }) {
         if (!astWalker || !uri) {
             throw new Error(
                 `Expected to receive uri and astWalker, but got: ${uri} and ${astWalker}`
@@ -90,12 +90,15 @@ class Indexer extends ServerBase {
                 previousNode,
             });
 
-            this.blazeIndexer.indexHelpers({ node, uri });
+            shouldIndexBlaze && this.blazeIndexer.indexHelpers({ node, uri });
             previousNode = node;
         });
     }
 
-    async loadSources(globs = ["**/**{.js,.ts,.html}"]) {
+    async loadSources({
+        globs = ["**/**{.js,.ts,.html}"],
+        shouldIndexBlaze = true,
+    }) {
         const uris = await this.findUris(globs);
 
         const { AstWalker, DEFAULT_ACORN_OPTIONS } = require("./ast-helpers");
@@ -121,12 +124,15 @@ class Indexer extends ServerBase {
 
                     // Also index the htmlJs representation.
                     const htmlJs =
-                        isFileHtml && SpacebarsCompiler.parse(fileContent);
+                        shouldIndexBlaze &&
+                        isFileHtml &&
+                        SpacebarsCompiler.parse(fileContent);
 
                     if (isFileHtml) {
-                        this.indexHtmlFile({ uri, astWalker });
+                        shouldIndexBlaze &&
+                            this.indexHtmlFile({ uri, astWalker });
                     } else {
-                        this.indexJsFile({ uri, astWalker });
+                        this.indexJsFile({ uri, astWalker, shouldIndexBlaze });
                     }
 
                     return {
@@ -213,7 +219,13 @@ class Indexer extends ServerBase {
         [this.blazeIndexer, this.methodsAndPublicationsIndexer].forEach((i) =>
             i?.reset?.()
         );
-        const { hasErrors, errors } = await this.loadSources();
+
+        const { hasErrors, errors } = await this.loadSources({
+            shouldIndexBlaze: await this.isUsingMeteorPackage(
+                "blaze-html-templates"
+            ),
+        });
+
         if (!hasErrors) {
             console.info("* Indexing completed.");
             return;
