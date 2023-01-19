@@ -12,9 +12,9 @@ Just install the extension and it will add the needed configuration for you.
 
 Note: this extensions changes the `jsconfig.json` and `.vscode/launch.json`. Remember to not include those changes to your version control system, as they are scoped to your environment.
 
-## Blaze Support
+## Meteor Language Server
 
-Meteor Toolbox is the only extension implementing a Blaze completion/definition provider. Check it in action:
+Meteor Toolbox is the only extension implementing a Meteor Language Server. It works for Blaze and React projects. Check it in action:
 
 ### Completions
 
@@ -45,6 +45,7 @@ And much more...
 ## Requirements
 
 This extension only runs inside a Meteor project.
+Monorepos are not supported yet.
 
 ## Extension Settings
 
