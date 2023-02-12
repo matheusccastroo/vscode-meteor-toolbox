@@ -1,4 +1,4 @@
-const { Uri, workspace, window, commands } = require("vscode");
+const { Uri, workspace, window, commands, FileType } = require("vscode");
 const { TextDecoder, TextEncoder } = require("util");
 const { isEqual } = require("lodash");
 const json5 = require("json5");
@@ -14,18 +14,17 @@ const writeToFile = async (data, targetUri) => {
     }
 };
 
-const createFileFromScratch = async (data, targetPath) => {
-    console.log(`${targetPath} does not exists, creating one...`);
+const createFileFromScratch = async (data, targetUri) => {
+    if (!(targetUri instanceof Uri)) {
+        throw new Error("Expected to receive uri");
+    }
 
-    const resolvedUri = Uri.joinPath(
-        workspace.workspaceFolders[0].uri,
-        targetPath
-    );
+    console.log(`${targetUri.fsPath} does not exists, creating one...`);
 
     const baseConfigAsString = JSON.stringify(data, null, 2);
     const encodedBaseConfig = new TextEncoder().encode(baseConfigAsString);
 
-    return writeToFile(encodedBaseConfig, resolvedUri);
+    return writeToFile(encodedBaseConfig, targetUri);
 };
 
 const appendToExistingFile = async (dataObject, targetUri, arrayMergeMode) => {
@@ -105,22 +104,60 @@ const clearMeteorBuildCache = async () => {
 
 const isWindows = () => process.platform === "win32";
 
-const isMeteorProject = async () => {
-    const projectRoot = Uri.joinPath(
-        workspace.workspaceFolders[0].uri,
-        ".meteor"
-    );
+/**
+ * When working with mono-repos, we have two options with vscode:
+ * 1st - Use the multi-root workspace feature. This adds folders to the workspaceFolders.
+ * 2nd - Use a normal "mono-repo", in this case we have only one root workspace.
+ *
+ * We need to account for those two cases. Basically check each workspaceFolder and
+ * each folder from the workspace.
+ */
+const getMeteorProjects = () =>
+    workspace.workspaceFolders.reduce(async (acc, { uri: rootUri }) => {
+        const currentAcc = await acc;
+        const key = rootUri.fsPath;
+
+        if (await isMeteorProject(rootUri)) {
+            currentAcc[key] = [rootUri];
+            return currentAcc;
+        }
+
+        const foldersToCheck = (await workspace.fs.readDirectory(rootUri))
+            .filter(([name, type]) => !!name && type === FileType.Directory)
+            .map(([name]) => Uri.joinPath(rootUri, name));
+        if (!foldersToCheck.length) {
+            return currentAcc;
+        }
+
+        currentAcc[key] = (
+            await Promise.all(
+                foldersToCheck.map(async (possibleProjectPath) =>
+                    (await isMeteorProject(possibleProjectPath))
+                        ? possibleProjectPath
+                        : null
+                )
+            )
+        ).filter(Boolean);
+
+        return currentAcc;
+    }, Promise.resolve({}));
+
+const fileExists = async (uri) => {
+    if (!uri) {
+        return false;
+    }
 
     let exists;
     try {
-        exists = !!(await workspace.fs.stat(projectRoot));
+        exists = !!(await workspace.fs.stat(uri));
     } catch (e) {
-        console.error(e);
         exists = false;
     }
 
     return exists;
 };
+
+const isMeteorProject = (root) => fileExists(Uri.joinPath(root, ".meteor"));
 
 module.exports = {
     createFileFromScratch,
@@ -129,4 +166,6 @@ module.exports = {
     isWindows,
     clearMeteorBuildCache,
     isMeteorProject,
+    fileExists,
+    getMeteorProjects,
 };

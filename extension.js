@@ -6,7 +6,7 @@ const {
 const {
     toggleAutoRunPackagesWatcher,
     clearMeteorBuildCache,
-    isMeteorProject,
+    getMeteorProjects,
 } = require("./src/helpers");
 const {
     addImportedPackagesToJsConfig,
@@ -17,10 +17,10 @@ const {
     stopServer,
 } = require("./src/connect-to-server");
 
-const createOrUpdateJsConfigFile = () => {
-    generateBaseJsConfig();
-    addImportedPackagesToJsConfig();
-    addCustomPackageOptionsToJsConfig();
+const createOrUpdateJsConfigFile = async (workspaceUri, projectUri) => {
+    await generateBaseJsConfig(workspaceUri, projectUri);
+    await addImportedPackagesToJsConfig(workspaceUri, projectUri);
+    await addCustomPackageOptionsToJsConfig(workspaceUri);
 };
 
 let importedPackagesFileWatcher;
@@ -35,17 +35,32 @@ const disposeWatchers = () =>
  * @param {vscode.ExtensionContext} context
  */
 async function activate(context) {
-    if (!(await isMeteorProject())) {
+    const meteorProjectsByWorkspace = await getMeteorProjects();
+    if (!Object.keys(meteorProjectsByWorkspace).length) {
         console.error(
-            "Not in a meteor project, not starting Meteor Toolbox extension..."
+            "No meteor projects found, not starting Meteor Toolbox extension..."
         );
         return;
     }
 
     console.log("Starting Meteor Toolbox extension...");
 
-    addDebugAndRunOptions();
-    createOrUpdateJsConfigFile();
+    for (const workspaceKey in meteorProjectsByWorkspace) {
+        if (
+            !Object.hasOwnProperty.call(meteorProjectsByWorkspace, workspaceKey)
+        ) {
+            continue;
+        }
+
+        const workspaceUri = vscode.Uri.file(workspaceKey);
+        const meteorProjects = meteorProjectsByWorkspace[workspaceKey];
+        if (!meteorProjects.length) continue;
+
+        for (const project of meteorProjects) {
+            await addDebugAndRunOptions(workspaceUri, project);
+            await createOrUpdateJsConfigFile(workspaceUri, project);
+        }
+    }
 
     const toggleAutoRunPackagesWatcherDisposable =
         vscode.commands.registerCommand(
@@ -77,7 +92,7 @@ async function activate(context) {
                 return;
             }
 
-            createOrUpdateJsConfigFile();
+            return createOrUpdateJsConfigFile();
         }
     );
 
@@ -86,27 +101,40 @@ async function activate(context) {
     );
 
     if (autoEnabled) {
-        const currentWorkspace = vscode.workspace.workspaceFolders[0];
-        importedPackagesFileWatcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(
-                currentWorkspace,
-                ".meteor/{packages, versions}"
-            )
-        );
-        customPackagesFileWatcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(
-                currentWorkspace,
-                "packages/**/package.js"
-            )
-        );
-
-        [importedPackagesFileWatcher, customPackagesFileWatcher].forEach(
-            (watcher) => {
-                watcher.onDidChange(createOrUpdateJsConfigFile);
-                watcher.onDidCreate(createOrUpdateJsConfigFile);
-                watcher.onDidDelete(createOrUpdateJsConfigFile);
+        for (const workspaceKey in meteorProjectsByWorkspace) {
+            if (
+                !Object.hasOwnProperty.call(
+                    meteorProjectsByWorkspace,
+                    workspaceKey
+                )
+            ) {
+                return;
             }
-        );
+
+            const currentWorkspace = vscode.Uri.file(workspaceKey);
+            importedPackagesFileWatcher =
+                vscode.workspace.createFileSystemWatcher(
+                    new vscode.RelativePattern(
+                        currentWorkspace,
+                        ".meteor/{packages, versions}"
+                    )
+                );
+            customPackagesFileWatcher =
+                vscode.workspace.createFileSystemWatcher(
+                    new vscode.RelativePattern(
+                        currentWorkspace,
+                        "packages/**/package.js"
+                    )
+                );
+
+            [importedPackagesFileWatcher, customPackagesFileWatcher].forEach(
+                (watcher) => {
+                    watcher.onDidChange(createOrUpdateJsConfigFile);
+                    watcher.onDidCreate(createOrUpdateJsConfigFile);
+                    watcher.onDidDelete(createOrUpdateJsConfigFile);
+                }
+            );
+        }
     } else {
         disposeWatchers();
     }
