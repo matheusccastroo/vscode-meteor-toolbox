@@ -6,19 +6,22 @@ class CompletionProvider extends ServerBase {
     }
 
     // TODO -> Should we trigger only with triggerCharacter?
-    onCompletionRequest({ textDocument: { uri }, position }) {
+    async onCompletionRequest({ textDocument: { uri }, position }) {
+        const projectPath = await this.findRootFromUri(uri);
+        if (!projectPath) return null;
+
         if (this.isFileJS(uri)) {
-            return this.handleJsCompletion({ uri, position });
+            return this.handleJsCompletion({ uri, position, projectPath });
         }
 
         if (this.isFileSpacebarsHTML(uri)) {
-            return this.handleHtmlCompletion({ uri, position });
+            return this.handleHtmlCompletion({ uri, position, projectPath });
         }
 
         return;
     }
 
-    handleJsCompletion({ uri, position }) {
+    handleJsCompletion({ uri, position, projectPath }) {
         // Parse the file, since the index may be outdated already.
         const {
             AstWalker,
@@ -52,17 +55,17 @@ class CompletionProvider extends ServerBase {
             CompletionItem,
         } = require("vscode-languageserver");
 
-        return Object.keys(this.indexer.blazeIndexer.templateIndexMap).map(
-            (templateName) => ({
-                ...CompletionItem.create(templateName),
-                textEdit: templateName,
-                kind: CompletionItemKind.Class,
-                detail: NODE_NAMES.TEMPLATE,
-            })
-        );
+        return Object.keys(
+            this.indexer.blazeIndexer.templateIndexMap[projectPath.fsPath] || {}
+        ).map((templateName) => ({
+            ...CompletionItem.create(templateName),
+            textEdit: templateName,
+            kind: CompletionItemKind.Class,
+            detail: NODE_NAMES.TEMPLATE,
+        }));
     }
 
-    handleHtmlCompletion({ uri, position }) {
+    handleHtmlCompletion({ uri, position, projectPath }) {
         const {
             CompletionItem,
             CompletionItemKind,
@@ -70,14 +73,14 @@ class CompletionProvider extends ServerBase {
         const { NODE_NAMES } = require("./ast-helpers");
 
         // TODO -> Offer completion of helpers.
-        return Object.keys(this.indexer.blazeIndexer.templateIndexMap).map(
-            (templateName) => ({
-                ...CompletionItem.create(templateName),
-                textEdit: templateName,
-                kind: CompletionItemKind.Class,
-                documentation: NODE_NAMES.TEMPLATE,
-            })
-        );
+        return Object.keys(
+            this.indexer.blazeIndexer.templateIndexMap[projectPath.fsPath] || {}
+        ).map((templateName) => ({
+            ...CompletionItem.create(templateName),
+            textEdit: templateName,
+            kind: CompletionItemKind.Class,
+            documentation: NODE_NAMES.TEMPLATE,
+        }));
     }
 }
 
