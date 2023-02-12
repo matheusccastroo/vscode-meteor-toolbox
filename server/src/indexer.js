@@ -5,12 +5,14 @@ const {
 const { BlazeIndexer } = require("./blaze-indexer");
 
 class Indexer extends ServerBase {
-    constructor({ rootUri, serverInstance, documentsInstance }) {
-        if (!rootUri) {
-            throw new Error("Expected rootUri");
+    constructor({ workspaceFolders, serverInstance, documentsInstance }) {
+        if (!workspaceFolders) {
+            throw new Error(
+                `Expected at least workspaceFolders, but got: ${workspaceFolders}`
+            );
         }
 
-        super(serverInstance, documentsInstance, rootUri);
+        super(serverInstance, documentsInstance, workspaceFolders);
 
         this.loaded = false;
         this.sources = {};
@@ -21,7 +23,7 @@ class Indexer extends ServerBase {
             new MethodsAndPublicationsIndexer();
     }
 
-    async findUris(patterns) {
+    async findUris(projectUri, patterns) {
         const glob = require("glob");
         const { promisify } = require("util");
 
@@ -42,11 +44,11 @@ class Indexer extends ServerBase {
         const uriArrays = await Promise.all(
             patterns.map((_p) =>
                 globPromise(_p, {
-                    cwd: this.rootUri.fsPath,
+                    cwd: projectUri.fsPath,
                     ignore: [
-                        "tests/**",
+                        "**/tests/**",
                         "**/**.tests.js",
-                        "node_modules/**",
+                        "**/node_modules/**",
                         ...directoriesToBeIgnored,
                     ],
                     absolute: true,
@@ -59,7 +61,7 @@ class Indexer extends ServerBase {
         return [...new Set(uris).values()].sort().map(this.parseUri);
     }
 
-    indexHtmlFile({ uri, astWalker }) {
+    indexHtmlFile({ uri, astWalker, projectUri }) {
         if (!astWalker || !uri) {
             throw new Error(
                 `Expected to receive uri and astWalker, but got: ${uri} and ${astWalker}`
@@ -70,11 +72,12 @@ class Indexer extends ServerBase {
             this.blazeIndexer.indexHelpersUsageAndTemplates({
                 uri,
                 node,
+                projectUri,
             });
         });
     }
 
-    indexJsFile({ uri, astWalker }) {
+    indexJsFile({ uri, astWalker, shouldIndexBlaze = true, projectUri }) {
         if (!astWalker || !uri) {
             throw new Error(
                 `Expected to receive uri and astWalker, but got: ${uri} and ${astWalker}`
@@ -83,20 +86,34 @@ class Indexer extends ServerBase {
 
         let previousNode;
         astWalker.walkUntil((node) => {
-            this.methodsAndPublicationsIndexer.indexDefinitions({ uri, node });
+            this.methodsAndPublicationsIndexer.indexDefinitions({
+                uri,
+                node,
+                projectUri,
+            });
             this.methodsAndPublicationsIndexer.indexUsage({
                 uri,
                 node,
                 previousNode,
+                projectUri,
             });
 
-            this.blazeIndexer.indexHelpers({ node, uri });
+            shouldIndexBlaze &&
+                this.blazeIndexer.indexHelpers({ node, uri, projectUri });
             previousNode = node;
         });
     }
 
-    async loadSources(globs = ["**/**{.js,.ts,.html}"]) {
-        const uris = await this.findUris(globs);
+    async loadSources({
+        globs = ["**/**{.js,.ts,.html}"],
+        shouldIndexBlaze = true,
+        projectUri,
+    }) {
+        if (!projectUri) {
+            throw new Error(`ProjectUri is required to loadSources.`);
+        }
+
+        const uris = await this.findUris(projectUri, globs);
 
         const { AstWalker, DEFAULT_ACORN_OPTIONS } = require("./ast-helpers");
         const { SpacebarsCompiler } = require("@blastjs/spacebars-compiler");
@@ -121,12 +138,20 @@ class Indexer extends ServerBase {
 
                     // Also index the htmlJs representation.
                     const htmlJs =
-                        isFileHtml && SpacebarsCompiler.parse(fileContent);
+                        shouldIndexBlaze &&
+                        isFileHtml &&
+                        SpacebarsCompiler.parse(fileContent);
 
                     if (isFileHtml) {
-                        this.indexHtmlFile({ uri, astWalker });
+                        shouldIndexBlaze &&
+                            this.indexHtmlFile({ uri, astWalker, projectUri });
                     } else {
-                        this.indexJsFile({ uri, astWalker });
+                        this.indexJsFile({
+                            uri,
+                            astWalker,
+                            shouldIndexBlaze,
+                            projectUri,
+                        });
                     }
 
                     return {
@@ -143,14 +168,16 @@ class Indexer extends ServerBase {
             })
         );
 
-        this.sources = results.filter(Boolean).reduce(
-            (acc, fileInfo) => ({
-                ...acc,
-                [fileInfo.uri.fsPath]: fileInfo,
-            }),
-            {}
+        this.sources = Object.assign(
+            this.sources || {},
+            results.filter(Boolean).reduce(
+                (acc, fileInfo) => ({
+                    ...acc,
+                    [fileInfo.uri.fsPath]: fileInfo,
+                }),
+                {}
+            )
         );
-        this.loaded = true;
 
         return {
             hasErrors: Array.isArray(parsingErrors) && !!parsingErrors.length,
@@ -182,7 +209,7 @@ class Indexer extends ServerBase {
         );
     }
 
-    async onDidChangeConfiguration({
+    onDidChangeConfiguration({
         settings: {
             conf: {
                 settingsEditor: {
@@ -205,20 +232,72 @@ class Indexer extends ServerBase {
             this.ignoreDirs = parsedDirs.map(this.parseUri);
         }
 
-        await this.reindex();
+        return this.reindex();
     }
 
     async reindex() {
-        console.info(`* Indexing project: ${this.rootUri}`);
-        [this.blazeIndexer, this.methodsAndPublicationsIndexer].forEach((i) =>
-            i?.reset?.()
+        const meteorProjects = await this.getMeteorProjects();
+
+        const indexResults = (
+            await Promise.all(
+                Object.keys(meteorProjects).map((projectKey) => {
+                    const meteorProjectsInsideWorkspace =
+                        meteorProjects[projectKey];
+                    if (!meteorProjectsInsideWorkspace.length) {
+                        return null;
+                    }
+
+                    return Promise.all(
+                        meteorProjectsInsideWorkspace.map(
+                            async (projectUri) => {
+                                console.info(
+                                    `* Indexing project: ${projectUri.fsPath}`
+                                );
+                                [
+                                    this.blazeIndexer,
+                                    this.methodsAndPublicationsIndexer,
+                                ].forEach((i) => i?.reset?.());
+
+                                return this.loadSources({
+                                    shouldIndexBlaze:
+                                        await this.isUsingMeteorPackage(
+                                            projectUri,
+                                            "blaze-html-templates"
+                                        ),
+                                    projectUri,
+                                });
+                            }
+                        )
+                    );
+                })
+            )
+        ).flatMap((results) => results);
+
+        this.loaded = true;
+
+        const { hasErrors, errors } = indexResults.reduce(
+            (acc, { hasErrors, errors }) => {
+                if (!acc.hasErrors) {
+                    acc.hasErrors = hasErrors;
+                }
+
+                if (acc.errors) {
+                    acc.errors.push(...errors);
+                } else {
+                    acc.errors = errors;
+                }
+
+                return acc;
+            },
+            {}
         );
-        const { hasErrors, errors } = await this.loadSources();
+
         if (!hasErrors) {
             console.info("* Indexing completed.");
             return;
         }
 
+        console.info("* Errors found when indexing");
         this.serverInstance.sendNotification(
             "errors/parsing",
             errors.map(({ uri }) => uri.fsPath).join(", \n")

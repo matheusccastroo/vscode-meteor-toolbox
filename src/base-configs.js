@@ -1,37 +1,41 @@
-const { workspace } = require("vscode");
-const { createFileFromScratch, appendToExistingFile } = require("./helpers");
+const { Uri } = require("vscode");
+const {
+    createFileFromScratch,
+    appendToExistingFile,
+    fileExists,
+} = require("./helpers");
 const { JSCONFIG, BASE_LAUNCH_CONFIG } = require("./constants");
 const { uniqBy, uniq } = require("lodash");
 
-const addDebugAndRunOptions = async () => {
-    const filesResults = await workspace.findFiles(".vscode/launch.json");
-    const fileUri = filesResults[0];
+const addDebugAndRunOptions = async (workspaceUri, projectUri) => {
+    const targetUri = Uri.joinPath(workspaceUri, ".vscode", "launch.json");
+    const exists = await fileExists(targetUri);
 
-    const baseConfig = BASE_LAUNCH_CONFIG.baseConfig();
-    if (!fileUri) {
-        return createFileFromScratch(baseConfig, BASE_LAUNCH_CONFIG.uri);
+    const baseConfig = BASE_LAUNCH_CONFIG.baseConfig(projectUri);
+    if (!exists) {
+        return createFileFromScratch(baseConfig, targetUri);
     }
 
     return appendToExistingFile(
         { configurations: baseConfig.configurations },
-        fileUri,
+        targetUri,
         (target, source) => {
             return uniqBy([...source, ...target], ({ name }) => name);
         }
     );
 };
 
-const generateBaseJsConfig = async () => {
-    const fileResults = await workspace.findFiles(JSCONFIG.uri);
-    const fileUri = fileResults[0];
+const generateBaseJsConfig = async (workspaceUri, projectUri) => {
+    const targetUri = Uri.joinPath(workspaceUri, JSCONFIG.uri);
+    const exists = await fileExists(targetUri);
 
-    if (!fileUri) {
-        return createFileFromScratch(JSCONFIG.baseConfig, JSCONFIG.uri);
+    if (!exists) {
+        return createFileFromScratch(JSCONFIG.baseConfig, targetUri);
     }
 
     return appendToExistingFile(
         JSCONFIG.baseConfig,
-        fileUri,
+        targetUri,
         (target, source) => uniq([...target, ...source])
     );
 };

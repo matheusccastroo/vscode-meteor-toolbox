@@ -35,9 +35,7 @@
         "packages"
     ],
     "activationEvents": [
-        "workspaceContains:.meteor/release",
-        "onLanguage:spacebars",
-        "onLanguage:javascript"
+        "workspaceContains:**/.meteor/release"
     ],
     "contributes": {
         "configuration": [

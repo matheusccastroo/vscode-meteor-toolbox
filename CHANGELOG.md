@@ -4,6 +4,10 @@ All notable changes to the "meteor-dev" extension will be documented in this fil
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [18/01/23]
+
+-   Run indexer on React projects.
+
 ## [07/01/23]
 
 -   Fix issue where methods declared as an object property were not being properly indexed.

@@ -1,5 +1,7 @@
 let client;
 const connectToLanguageServer = async (asAbsolutePath) => {
+    console.log("Connecting to language server...");
+
     const {
         TransportKind,
         LanguageClient,
@@ -45,6 +47,7 @@ const connectToLanguageServer = async (asAbsolutePath) => {
     await client.start();
     setupNotifications();
 
+    console.log("Connected to the server!");
     return client;
 };
 

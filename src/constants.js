@@ -23,7 +23,10 @@ const JSCONFIG = {
 
 const BASE_LAUNCH_CONFIG = {
     uri: ".vscode/launch.json",
-    baseConfig: () => {
+    baseConfig: (projectUri) => {
+        const fsPath = projectUri.fsPath;
+        const projectName = fsPath.match(/[^/]*$/)[0] || "Unkwnon";
+
         const portToUse = workspace
             .getConfiguration()
             .get("conf.settingsEditor.meteorToolbox.port");
@@ -40,7 +43,7 @@ const BASE_LAUNCH_CONFIG = {
                 {
                     type: "node",
                     request: "launch",
-                    name: "Meteor: Run",
+                    name: `Meteor: Run - ${projectName}`,
                     runtimeExecutable: "meteor",
                     outputCapture: "std",
                     noDebug: "true",
@@ -50,12 +53,14 @@ const BASE_LAUNCH_CONFIG = {
                         portToUse,
                         ...additionalArgs,
                     ],
+                    cwd: fsPath,
                 },
                 {
                     type: "node",
                     request: "launch",
-                    name: "Meteor: Debug",
+                    name: `Meteor: Debug - ${projectName}`,
                     runtimeExecutable: "meteor",
+                    cwd: fsPath,
                     runtimeArgs: [
                         "run",
                         "--port",

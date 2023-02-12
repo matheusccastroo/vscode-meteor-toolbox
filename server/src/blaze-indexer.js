@@ -8,22 +8,26 @@ class BlazeIndexer {
         this.htmlUsageMap = {};
     }
 
-    addHelpersToMap({ templateName, helperName, value, uri }) {
-        this.templateIndexMap[templateName] =
-            this.templateIndexMap[templateName] || {};
+    addHelpersToMap({ templateName, helperName, value, uri, projectUri }) {
+        const projectPath = projectUri.fsPath;
+
+        this.templateIndexMap[projectPath][templateName] =
+            this.templateIndexMap[projectPath][templateName] || {};
 
         // Set JS uri too - we need to do that to be able to infer the template from a given helper
         // and file uri. It's used in getHelperFromTemplate() from this class.
-        this.templateIndexMap[templateName].jsUri =
-            this.templateIndexMap[templateName].jsUri || uri;
+        this.templateIndexMap[projectPath][templateName].jsUri =
+            this.templateIndexMap[projectPath][templateName].jsUri || uri;
 
-        this.templateIndexMap[templateName]["helpers"] =
-            this.templateIndexMap[templateName]["helpers"] || {};
+        this.templateIndexMap[projectPath][templateName]["helpers"] =
+            this.templateIndexMap[projectPath][templateName]["helpers"] || {};
 
-        this.templateIndexMap[templateName]["helpers"][helperName] = value;
+        this.templateIndexMap[projectPath][templateName]["helpers"][
+            helperName
+        ] = value;
     }
 
-    addUsage({ node, uri, key }) {
+    addUsage({ node, uri, key, projectUri }) {
         if (!node || !uri || !key) {
             throw new Error(
                 `Expected to receive node, uri and key, but got: ${node}, ${uri} and ${key}.`
@@ -36,16 +40,17 @@ class BlazeIndexer {
                 end: { line: endLine, column: endColumn },
             },
         } = node;
+        const mapKey = `${projectUri.fsPath}${key}`;
         const entryKey = `${uri.fsPath}${startLine}${startColumn}${endLine}${endColumn}`;
 
-        if (!Array.isArray(this.htmlUsageMap[key])) {
-            this.htmlUsageMap[key] = [{ node, uri, entryKey }];
+        if (!Array.isArray(this.htmlUsageMap[mapKey])) {
+            this.htmlUsageMap[mapKey] = [{ node, uri, entryKey }];
             return;
         }
 
         // Entry already exists, no need to add again.
         if (
-            this.htmlUsageMap[key].some(
+            this.htmlUsageMap[mapKey].some(
                 ({ entryKey: existingEntryKey }) =>
                     existingEntryKey === entryKey
             )
@@ -53,10 +58,10 @@ class BlazeIndexer {
             return;
         }
 
-        return this.htmlUsageMap[key].push({ node, uri, entryKey });
+        return this.htmlUsageMap[mapKey].push({ node, uri, entryKey });
     }
 
-    indexHelpers({ node, uri }) {
+    indexHelpers({ node, uri, projectUri }) {
         const { NODE_TYPES } = require("./ast-helpers");
 
         if (!node || node.type !== NODE_TYPES.CALL_EXPRESSION) {
@@ -94,12 +99,13 @@ class BlazeIndexer {
                     helperName: key.name,
                     value: loc,
                     uri,
+                    projectUri,
                 });
             }
         }
     }
 
-    indexHelpersUsageAndTemplates({ uri, node }) {
+    indexHelpersUsageAndTemplates({ uri, node, projectUri }) {
         if (!node || !uri) return;
 
         const { NODE_TYPES } = require("./ast-helpers");
@@ -110,12 +116,18 @@ class BlazeIndexer {
                 node: path,
                 uri,
                 key: path.head,
+                projectUri,
             });
         }
 
         // Index template tags usage {{> templateName}}
         if (type === NODE_TYPES.PARTIAL_STATEMENT && name) {
-            return this.addUsage({ node: name, uri, key: name.original });
+            return this.addUsage({
+                node: name,
+                uri,
+                key: name.original,
+                projectUri,
+            });
         }
 
         if (
@@ -128,6 +140,7 @@ class BlazeIndexer {
                 node: firstParam,
                 uri,
                 key: firstParam.original,
+                projectUri,
             });
         }
 
@@ -144,10 +157,12 @@ class BlazeIndexer {
 
         if (!matches || !matches.length) return;
 
-        this.templateIndexMap[matches[1]] = { node, uri };
+        this.templateIndexMap[projectUri.fsPath] =
+            this.templateIndexMap[projectUri.fsPath] || {};
+        this.templateIndexMap[projectUri.fsPath][matches[1]] = { node, uri };
     }
 
-    getHelperFromTemplate({ templateName, helper, templateUri }) {
+    getHelperFromTemplate({ templateName, helper, templateUri, projectUri }) {
         const _name =
             (typeof helper === "string" && helper) ||
             helper.parts?.[0] ||
@@ -161,21 +176,29 @@ class BlazeIndexer {
             );
         }
 
-        let indexMap = this.templateIndexMap[templateName];
+        const projectPath = projectUri.fsPath;
+        let indexMap = this.templateIndexMap[projectPath][templateName];
         if (!indexMap && !!templateUri) {
-            const fromTemplate = Object.keys(this.templateIndexMap).find(
-                (k) => {
-                    if (!Object.hasOwnProperty.call(this.templateIndexMap, k)) {
-                        return;
-                    }
-
-                    const jsUri = this.templateIndexMap[k].jsUri;
-
-                    return jsUri && jsUri.path === templateUri.path;
+            const fromTemplate = Object.keys(
+                this.templateIndexMap[projectPath]
+            ).find((k) => {
+                if (
+                    !Object.hasOwnProperty.call(
+                        this.templateIndexMap[projectPath],
+                        k
+                    )
+                ) {
+                    return;
                 }
-            );
 
-            indexMap = !!fromTemplate && this.templateIndexMap[fromTemplate];
+                const jsUri = this.templateIndexMap[projectPath][k].jsUri;
+
+                return jsUri && jsUri.path === templateUri.path;
+            });
+
+            indexMap =
+                !!fromTemplate &&
+                this.templateIndexMap[projectPath][fromTemplate];
         }
 
         if (!indexMap || !Object.keys(indexMap.helpers).length) return;
@@ -183,7 +206,7 @@ class BlazeIndexer {
         return indexMap.helpers[_name];
     }
 
-    getTemplateInfo(templateName) {
+    getTemplateInfo(templateName, projectUri) {
         const _name =
             (typeof templateName === "string" && templateName) ||
             templateName.parts?.[0] ||
@@ -197,7 +220,7 @@ class BlazeIndexer {
             );
         }
 
-        return this.templateIndexMap[_name] || {};
+        return this.templateIndexMap[projectUri.fsPath][_name] || {};
     }
 
     reset() {

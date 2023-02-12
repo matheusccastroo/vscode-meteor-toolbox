@@ -4,17 +4,16 @@ const path = require("path");
 const vm = require("vm");
 const fsPromises = require("fs").promises;
 const { TextDecoder } = require("util");
-const { appendToExistingFile, isWindows } = require("./helpers");
+const { appendToExistingFile, isWindows, fileExists } = require("./helpers");
 const { JSCONFIG, METEOR_ARCHS } = require("./constants");
 const json5 = require("json5");
 const { uniq } = require("lodash");
 const dontMerge = (_, source) => source;
 
-async function addImportedPackagesToJsConfig() {
-    const filesResults = await workspace.findFiles(".meteor/packages");
-    const fileUri = filesResults[0];
+async function addImportedPackagesToJsConfig(workspaceUri, projectUri) {
+    const packagesFileUri = Uri.joinPath(projectUri, ".meteor", "packages");
 
-    const content = await workspace.fs.readFile(fileUri);
+    const content = await workspace.fs.readFile(packagesFileUri);
     const packagesToLoad = new TextDecoder()
         .decode(content)
         .replace(/#.*/g, "")
@@ -23,8 +22,8 @@ async function addImportedPackagesToJsConfig() {
         .map((p) => p.split("@")[0].trim().replace(":", "_"));
 
     const versionMap = {};
-    const fileArray = await workspace.findFiles(".meteor/versions");
-    const newLocal = await workspace.fs.readFile(fileArray[0]);
+    const versionsFileUri = Uri.joinPath(projectUri, ".meteor", "versions");
+    const newLocal = await workspace.fs.readFile(versionsFileUri);
     new TextDecoder()
         .decode(newLocal)
         .replace(/#.*/g, "")
@@ -69,7 +68,7 @@ async function addImportedPackagesToJsConfig() {
                 };
             })
         )
-    ).filter((o) => o);
+    ).filter(Boolean);
     const paths = {};
 
     packageCodeAndPaths.forEach(({ obj, packageName, packagePath }) => {
@@ -95,9 +94,16 @@ async function addImportedPackagesToJsConfig() {
         });
     });
 
+    const workspaceJsConfigUri = Uri.joinPath(workspaceUri, JSCONFIG.uri);
+    if (!(await fileExists(workspaceJsConfigUri))) {
+        throw new Error(
+            `jsconfig file does not exists at: ${workspaceJsConfigUri.fsPath}. Maybe you forgot to create the file first?`
+        );
+    }
+
     await appendToExistingFile(
         { compilerOptions: { paths: { ...paths } } },
-        Uri.joinPath(workspace.workspaceFolders[0].uri, JSCONFIG.uri),
+        Uri.joinPath(workspaceUri, JSCONFIG.uri),
         dontMerge
     );
 
@@ -106,7 +112,7 @@ async function addImportedPackagesToJsConfig() {
     );
 }
 
-async function addCustomPackageOptionsToJsConfig() {
+async function addCustomPackageOptionsToJsConfig(workspaceUri) {
     const meteorPackageDirsFromExtensionConfig = workspace
         .getConfiguration()
         .get("conf.settingsEditor.meteorToolbox.meteorPackageDirs")
@@ -114,7 +120,7 @@ async function addCustomPackageOptionsToJsConfig() {
         ?.map((dir) => `${dir}/**/package.js`);
 
     const dirsToLook = [
-        "packages/**/package.js",
+        "**/packages/**/package.js",
         ...(meteorPackageDirsFromExtensionConfig || []),
     ];
 
@@ -177,7 +183,7 @@ async function addCustomPackageOptionsToJsConfig() {
 
         await appendToExistingFile(
             { compilerOptions: { paths: { ...paths } } },
-            Uri.joinPath(workspace.workspaceFolders[0].uri, JSCONFIG.uri),
+            Uri.joinPath(workspaceUri, JSCONFIG.uri),
             dontMerge
         );
     }

@@ -19,7 +19,7 @@ class MethodsAndPublicationsIndexer {
         this.usageMap = {};
     }
 
-    addUsage({ node, uri }) {
+    addUsage({ node, uri, projectUri }) {
         if (!node || !uri) {
             throw new Error(
                 `Expected to receive node and uri, but got: ${node} and ${uri}`
@@ -33,12 +33,13 @@ class MethodsAndPublicationsIndexer {
                 end: { line: endLine, column: endColumn },
             },
         } = node;
-        const entryKey = `${uri.fsPath}${startLine}${startColumn}${endLine}${endColumn}`;
-        this.usageMap[value] = this.usageMap[value] || [];
+        const usageMapKey = `${projectUri.fsPath}${value}`;
+        const entryKey = `${projectUri.fsPath}${uri.fsPath}${startLine}${startColumn}${endLine}${endColumn}`;
+        this.usageMap[usageMapKey] = this.usageMap[usageMapKey] || [];
 
         // If entry key is already on the values, don't add it again.
         if (
-            this.usageMap[value].some(
+            this.usageMap[usageMapKey].some(
                 ({ entryKey: existingEntryKey }) =>
                     existingEntryKey === entryKey
             )
@@ -46,10 +47,10 @@ class MethodsAndPublicationsIndexer {
             return;
         }
 
-        this.usageMap[value].push({ node, uri, entryKey });
+        this.usageMap[usageMapKey].push({ node, uri, entryKey });
     }
 
-    addDefinitionToMap({ node, isMethod = false, uri }) {
+    addDefinitionToMap({ node, isMethod = false, uri, projectUri }) {
         const { NODE_TYPES } = require("./ast-helpers");
 
         if (
@@ -60,7 +61,7 @@ class MethodsAndPublicationsIndexer {
         }
 
         const toAdd = isMethod ? this.methodsMap : this.publicationsMap;
-        toAdd[node.value || node.name] = { node, uri };
+        toAdd[`${projectUri.fsPath}${node.value || node.name}`] = { node, uri };
 
         return true;
     }
@@ -169,7 +170,7 @@ class MethodsAndPublicationsIndexer {
         );
     }
 
-    indexUsage({ node, uri, previousNode = {} }) {
+    indexUsage({ node, uri, previousNode = {}, projectUri }) {
         if (!node || !uri) {
             throw new Error(
                 `Expected to receive node and uri, but got: ${node} and ${uri}`
@@ -199,16 +200,16 @@ class MethodsAndPublicationsIndexer {
 
         if (
             ![this.methodsMap, this.publicationsMap].some((map) =>
-                Object.hasOwnProperty.call(map, value)
+                Object.hasOwnProperty.call(map, `${projectUri.fsPath}${value}`)
             )
         ) {
             return;
         }
 
-        this.addUsage({ node, uri });
+        this.addUsage({ node, uri, projectUri });
     }
 
-    indexDefinitions({ uri, node }) {
+    indexDefinitions({ uri, node, projectUri }) {
         if (!node || !uri) {
             throw new Error(
                 `Expected to receive node and uri, but got: ${node} and ${uri}`
@@ -243,10 +244,11 @@ class MethodsAndPublicationsIndexer {
             node,
             isMethod,
             uri,
+            projectUri,
         });
     }
 
-    handleStringLiterals({ node, isMethod, uri }) {
+    handleStringLiterals({ node, isMethod, uri, projectUri }) {
         const nodeArguments = node.arguments;
         if (!Array.isArray(nodeArguments) || !nodeArguments.length) {
             return;
@@ -258,7 +260,10 @@ class MethodsAndPublicationsIndexer {
         for (const arg of nodeArguments) {
             // If it's not for methods, and we already found the string literal,
             // then we have the publication name.
-            if (!isMethod && this.addDefinitionToMap({ node: arg, uri })) {
+            if (
+                !isMethod &&
+                this.addDefinitionToMap({ node: arg, uri, projectUri })
+            ) {
                 break;
             }
 
@@ -287,25 +292,27 @@ class MethodsAndPublicationsIndexer {
                     node: isValidatedMethod ? value : key,
                     isMethod,
                     uri,
+                    projectUri,
                 });
             }
         }
     }
 
-    getLiteralInfo(key) {
+    getLiteralInfo(key, projectUri) {
         if (!key || typeof key !== "string") {
             throw new Error(`Expected to receive key, but got: ${key}`);
         }
 
-        return this.methodsMap[key] || this.publicationsMap[key];
+        const targetKey = `${projectUri.fsPath}${key}`;
+        return this.methodsMap[targetKey] || this.publicationsMap[targetKey];
     }
 
-    getUsageInfo(key) {
+    getUsageInfo(key, projectUri) {
         if (!key || typeof key !== "string") {
             throw new Error(`Expected to receive key, but got: ${key}`);
         }
 
-        return this.usageMap[key];
+        return this.usageMap[`${projectUri.fsPath}${key}`];
     }
 
     reset() {
