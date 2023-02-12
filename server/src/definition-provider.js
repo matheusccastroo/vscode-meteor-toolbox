@@ -5,19 +5,22 @@ class DefinitionProvider extends ServerBase {
         super(serverInstance, documentsInstance, rootUri, indexer);
     }
 
-    onDefinitionRequest({ position, textDocument: { uri } }) {
+    async onDefinitionRequest({ position, textDocument: { uri } }) {
+        const projectUri = await this.findRootFromUri(uri);
+        if (!projectUri) return;
+
         if (this.isFileSpacebarsHTML(uri)) {
-            return this.handleFileSpacebarsHTML({ uri, position });
+            return this.handleFileSpacebarsHTML({ uri, position, projectUri });
         }
 
         if (this.isFileJS(uri)) {
-            return this.handleFileJS({ uri, position });
+            return this.handleFileJS({ uri, position, projectUri });
         }
 
         return;
     }
 
-    async handleFileJS({ uri, position }) {
+    async handleFileJS({ uri, position, projectUri }) {
         const { astWalker } = this.indexer.getFileInfo(uri);
 
         const nodeAtPosition = astWalker.getSymbolAtPosition(position);
@@ -34,7 +37,6 @@ class DefinitionProvider extends ServerBase {
             return;
         }
 
-        const projectUri = await this.findRootFromUri(uri);
         const definitionInfo =
             projectUri &&
             ((await this.indexer.methodsAndPublicationsIndexer.getLiteralInfo(
@@ -44,6 +46,7 @@ class DefinitionProvider extends ServerBase {
                 (await this.indexer.blazeIndexer.getHelperFromTemplate({
                     templateUri: this.parseUri(uri),
                     helper: nodeKey,
+                    projectUri,
                 })));
         if (!definitionInfo) {
             /**
@@ -51,7 +54,11 @@ class DefinitionProvider extends ServerBase {
              * node location. The problem is that this add unnecessary "definitions" sometimes.
              * To get around that, we check if we are searching for a template or helper.
              */
-            if (!this.indexer.blazeIndexer.htmlUsageMap[nodeAtPosition.name]) {
+            if (
+                !this.indexer.blazeIndexer.htmlUsageMap[
+                    `${projectUri.fsPath}${nodeAtPosition.name}`
+                ]
+            ) {
                 console.warn(`Didn't find definitions for ${nodeAtPosition}`);
                 return;
             }
@@ -83,7 +90,7 @@ class DefinitionProvider extends ServerBase {
         );
     }
 
-    handleFileSpacebarsHTML({ uri, position }) {
+    handleFileSpacebarsHTML({ uri, position, projectUri }) {
         const { AstWalker } = require("./ast-helpers");
         const htmlWalker = new AstWalker(
             this.getFileContent(uri),
@@ -107,6 +114,7 @@ class DefinitionProvider extends ServerBase {
                 symbol: htmlSymbol,
                 htmlWalker,
                 uri,
+                projectUri,
             });
         }
 
@@ -117,6 +125,7 @@ class DefinitionProvider extends ServerBase {
             return this.handleMustacheStatement({
                 symbol: htmlSymbol,
                 uri,
+                projectUri,
             });
         }
 
@@ -254,7 +263,7 @@ class DefinitionProvider extends ServerBase {
         );
     }
 
-    handlePartialStatement({ symbol, htmlWalker, uri }) {
+    handlePartialStatement({ symbol, htmlWalker, uri, projectUri }) {
         /**
          * Is the template defined in the same HTML file that initiated the request?
          */
@@ -269,8 +278,10 @@ class DefinitionProvider extends ServerBase {
         /**
          * OK, we need to search for the template.
          */
-        const { uri: templateUri } =
-            this.indexer.blazeIndexer.getTemplateInfo(symbol);
+        const { uri: templateUri } = this.indexer.blazeIndexer.getTemplateInfo(
+            symbol,
+            projectUri
+        );
 
         /**
          * Well, we tried but we didn't find anything useful.
@@ -357,7 +368,7 @@ class DefinitionProvider extends ServerBase {
         return visitHtmlChildren(htmlJs.children) && htmlJs;
     }
 
-    handleMustacheStatement({ symbol, uri }) {
+    handleMustacheStatement({ symbol, uri, projectUri }) {
         const wrappingTemplate = this.getWrappingTemplate({ uri, symbol });
         if (!wrappingTemplate) return;
 
@@ -371,6 +382,7 @@ class DefinitionProvider extends ServerBase {
         const helper = this.indexer.blazeIndexer.getHelperFromTemplate({
             templateName,
             helper: symbol,
+            projectUri,
         });
 
         const { start, end } = helper || {};

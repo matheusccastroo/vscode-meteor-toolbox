@@ -61,7 +61,7 @@ class Indexer extends ServerBase {
         return [...new Set(uris).values()].sort().map(this.parseUri);
     }
 
-    indexHtmlFile({ uri, astWalker }) {
+    indexHtmlFile({ uri, astWalker, projectUri }) {
         if (!astWalker || !uri) {
             throw new Error(
                 `Expected to receive uri and astWalker, but got: ${uri} and ${astWalker}`
@@ -72,6 +72,7 @@ class Indexer extends ServerBase {
             this.blazeIndexer.indexHelpersUsageAndTemplates({
                 uri,
                 node,
+                projectUri,
             });
         });
     }
@@ -97,7 +98,8 @@ class Indexer extends ServerBase {
                 projectUri,
             });
 
-            shouldIndexBlaze && this.blazeIndexer.indexHelpers({ node, uri });
+            shouldIndexBlaze &&
+                this.blazeIndexer.indexHelpers({ node, uri, projectUri });
             previousNode = node;
         });
     }

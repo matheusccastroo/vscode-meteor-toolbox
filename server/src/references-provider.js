@@ -43,8 +43,10 @@ class ReferencesProvider extends ServerBase {
                 nodeKey,
                 projectUri
             ) ||
-                this.indexer.blazeIndexer.htmlUsageMap[nodeKey] ||
-                this.indexer.blazeIndexer.getTemplateInfo(nodeKey));
+                this.indexer.blazeIndexer.htmlUsageMap[
+                    `${projectUri.fsPath}${nodeKey}`
+                ] ||
+                this.indexer.blazeIndexer.getTemplateInfo(nodeKey, projectUri));
 
         if (!Array.isArray(usageInfoArray) || !usageInfoArray.length) {
             console.warn(`No references found for ${nodeKey}`);
