@@ -17,7 +17,7 @@ class DefinitionProvider extends ServerBase {
         return;
     }
 
-    handleFileJS({ uri, position }) {
+    async handleFileJS({ uri, position }) {
         const { astWalker } = this.indexer.getFileInfo(uri);
 
         const nodeAtPosition = astWalker.getSymbolAtPosition(position);
@@ -34,14 +34,17 @@ class DefinitionProvider extends ServerBase {
             return;
         }
 
+        const projectUri = await this.findRootFromUri(uri);
         const definitionInfo =
-            this.indexer.methodsAndPublicationsIndexer.getLiteralInfo(
-                nodeKey
-            ) ||
-            this.indexer.blazeIndexer.getHelperFromTemplate({
-                templateUri: this.parseUri(uri),
-                helper: nodeKey,
-            });
+            projectUri &&
+            ((await this.indexer.methodsAndPublicationsIndexer.getLiteralInfo(
+                nodeKey,
+                projectUri
+            )) ||
+                (await this.indexer.blazeIndexer.getHelperFromTemplate({
+                    templateUri: this.parseUri(uri),
+                    helper: nodeKey,
+                })));
         if (!definitionInfo) {
             /**
              * This is a "hack": as we want the references, we need to return the current

@@ -5,7 +5,7 @@ class ReferencesProvider extends ServerBase {
         super(serverInstance, documentsInstance, rootUri, indexer);
     }
 
-    onReferenceRequest({ position, textDocument: { uri } }) {
+    async onReferenceRequest({ position, textDocument: { uri } }) {
         if (!this.isFileJS(uri)) {
             return;
         }
@@ -36,10 +36,15 @@ class ReferencesProvider extends ServerBase {
 
         // Find references for helpers, templateNames, and methods/publications.
         const nodeKey = nodeAtPosition.value || nodeAtPosition.name;
+        const projectUri = await this.findRootFromUri(uri);
         const usageInfoArray =
-            this.indexer.methodsAndPublicationsIndexer.getUsageInfo(nodeKey) ||
-            this.indexer.blazeIndexer.htmlUsageMap[nodeKey] ||
-            this.indexer.blazeIndexer.getTemplateInfo(nodeKey);
+            projectUri &&
+            (this.indexer.methodsAndPublicationsIndexer.getUsageInfo(
+                nodeKey,
+                projectUri
+            ) ||
+                this.indexer.blazeIndexer.htmlUsageMap[nodeKey] ||
+                this.indexer.blazeIndexer.getTemplateInfo(nodeKey));
 
         if (!Array.isArray(usageInfoArray) || !usageInfoArray.length) {
             console.warn(`No references found for ${nodeKey}`);

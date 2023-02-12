@@ -129,47 +129,42 @@ class ServerBase {
         return exists;
     }
 
-    async getMeteorProjects() {
+    getMeteorProjects(workspaceFolder) {
         const { Utils } = require("vscode-uri");
         const { readdir } = require("fs/promises");
 
-        const meteorProjectsByWorkspace = this.workspaceFolders.reduce(
-            async (acc, { uri: rootUri }) => {
-                const currentAcc = await acc;
-                const parsedUri = this.parseUri(rootUri);
-                const key = parsedUri.fsPath;
+        return [
+            ...(workspaceFolder ? [workspaceFolder] : this.workspaceFolders),
+        ].reduce(async (acc, { uri: rootUri }) => {
+            const currentAcc = await acc;
+            const parsedUri = this.parseUri(rootUri);
+            const key = parsedUri.fsPath;
 
-                if (await this.isMeteorProject(rootUri)) {
-                    currentAcc[key] = [parsedUri];
-                    return currentAcc;
-                }
-
-                const foldersToCheck = (
-                    await readdir(key, { withFileTypes: true })
-                )
-                    .filter((f) => !!f.isDirectory())
-                    .map((d) => d.name)
-                    .map((name) => Utils.joinPath(parsedUri, name));
-                if (!foldersToCheck.length) {
-                    return currentAcc;
-                }
-
-                currentAcc[key] = (
-                    await Promise.all(
-                        foldersToCheck.map(async (possibleProjectPath) =>
-                            (await this.isMeteorProject(possibleProjectPath))
-                                ? possibleProjectPath
-                                : null
-                        )
-                    )
-                ).filter(Boolean);
-
+            if (await this.isMeteorProject(rootUri)) {
+                currentAcc[key] = [parsedUri];
                 return currentAcc;
-            },
-            Promise.resolve({})
-        );
+            }
 
-        return meteorProjectsByWorkspace;
+            const foldersToCheck = (await readdir(key, { withFileTypes: true }))
+                .filter((f) => !!f.isDirectory())
+                .map((d) => d.name)
+                .map((name) => Utils.joinPath(parsedUri, name));
+            if (!foldersToCheck.length) {
+                return currentAcc;
+            }
+
+            currentAcc[key] = (
+                await Promise.all(
+                    foldersToCheck.map(async (possibleProjectPath) =>
+                        (await this.isMeteorProject(possibleProjectPath))
+                            ? possibleProjectPath
+                            : null
+                    )
+                )
+            ).filter(Boolean);
+
+            return currentAcc;
+        }, Promise.resolve({}));
     }
 
     async isMeteorProject(possibleProjectUri) {
@@ -182,6 +177,31 @@ class ServerBase {
         const { Utils } = require("vscode-uri");
 
         return this.fileExists(Utils.joinPath(_uri, ".meteor"));
+    }
+
+    async findRootFromUri(uri) {
+        const matchingWorkspaceFolder = this.workspaceFolders.find(
+            ({ uri: workspaceUri }) => uri.includes(workspaceUri)
+        );
+
+        if (!matchingWorkspaceFolder) {
+            return null;
+        }
+
+        const parsedWorkspacePath = this.parseUri(
+            matchingWorkspaceFolder.uri
+        ).path;
+        const existingMeteorProjects = (
+            await this.getMeteorProjects(matchingWorkspaceFolder)
+        )?.[parsedWorkspacePath];
+        if (!existingMeteorProjects?.length) {
+            return null;
+        }
+
+        const parsedUriPath = this.parseUri(uri).path;
+        return existingMeteorProjects.find((projectDir) =>
+            parsedUriPath.includes(projectDir.fsPath)
+        );
     }
 }
 
