@@ -4,10 +4,10 @@ class ServerBase {
         JS_TEMPLATE: ".js",
     };
 
-    constructor(serverInstance, documentsInstance, rootUri, indexer) {
+    constructor(serverInstance, documentsInstance, workspaceFolders, indexer) {
         this.serverInstance = serverInstance;
         this.documentsInstance = documentsInstance;
-        this.rootUri = this.parseUri(rootUri);
+        this.workspaceFolders = workspaceFolders;
         this.indexer = indexer;
     }
 
@@ -79,7 +79,7 @@ class ServerBase {
         });
     }
 
-    async isUsingMeteorPackage(packageName) {
+    async isUsingMeteorPackage(projectUri, packageName) {
         if (!packageName || typeof packageName !== "string") {
             throw new Error(
                 `Expected to receive packageName string, but got: ${packageName}`
@@ -88,7 +88,7 @@ class ServerBase {
 
         const { Utils } = require("vscode-uri");
         const packageFilesUri = Utils.joinPath(
-            this.rootUri,
+            projectUri,
             ".meteor",
             "packages"
         );
@@ -104,6 +104,84 @@ class ServerBase {
             console.error(e);
             return false;
         }
+    }
+
+    /**
+     * This is basically duplicated from the client extension,
+     * but for now this is OK. In the futuer we may want to have
+     * a shared folder.
+     */
+    async fileExists(fileUri) {
+        if (!fileUri) {
+            return false;
+        }
+
+        // We can accept either URI or string.
+        const _uri = this.parseUri(fileUri);
+
+        let exists;
+        try {
+            exists = !!(await require("fs/promises").stat(_uri.fsPath));
+        } catch (e) {
+            exists = false;
+        }
+
+        return exists;
+    }
+
+    async getMeteorProjects() {
+        const { Utils } = require("vscode-uri");
+        const { readdir } = require("fs/promises");
+
+        const meteorProjectsByWorkspace = this.workspaceFolders.reduce(
+            async (acc, { uri: rootUri }) => {
+                const currentAcc = await acc;
+                const parsedUri = this.parseUri(rootUri);
+                const key = parsedUri.fsPath;
+
+                if (await this.isMeteorProject(rootUri)) {
+                    currentAcc[key] = [parsedUri];
+                    return currentAcc;
+                }
+
+                const foldersToCheck = (
+                    await readdir(key, { withFileTypes: true })
+                )
+                    .filter((f) => !!f.isDirectory())
+                    .map((d) => d.name)
+                    .map((name) => Utils.joinPath(parsedUri, name));
+                if (!foldersToCheck.length) {
+                    return currentAcc;
+                }
+
+                currentAcc[key] = (
+                    await Promise.all(
+                        foldersToCheck.map(async (possibleProjectPath) =>
+                            (await this.isMeteorProject(possibleProjectPath))
+                                ? possibleProjectPath
+                                : null
+                        )
+                    )
+                ).filter(Boolean);
+
+                return currentAcc;
+            },
+            Promise.resolve({})
+        );
+
+        return meteorProjectsByWorkspace;
+    }
+
+    async isMeteorProject(possibleProjectUri) {
+        if (!possibleProjectUri) {
+            throw new Error(
+                "Missing project path when checking if it's a meteor project"
+            );
+        }
+        const _uri = this.parseUri(possibleProjectUri);
+        const { Utils } = require("vscode-uri");
+
+        return this.fileExists(Utils.joinPath(_uri, ".meteor"));
     }
 }
 

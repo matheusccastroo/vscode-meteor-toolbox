@@ -47,6 +47,7 @@ const connectToLanguageServer = async (asAbsolutePath) => {
     await client.start();
     setupNotifications();
 
+    console.log("Connected to the server!");
     return client;
 };
 

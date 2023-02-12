@@ -18,17 +18,14 @@ class ServerInstance {
         this.documents = new TextDocuments(TextDocument);
 
         this.connection.onInitialize(async (params) => {
-            this.rootUri =
-                params.rootUri ||
-                (params.rootPath && `file://${params.rootPath}`);
-
-            if (!this.rootUri) {
-                console.error("Not able to found rootUri");
+            this.workspaceFolders = params.workspaceFolders;
+            if (!this.workspaceFolders?.length) {
+                console.error("Not able to found workspaces folders");
                 return;
             }
 
             this.indexer = new Indexer({
-                rootUri: this.rootUri,
+                workspaceFolders: this.workspaceFolders,
                 serverInstance: this.connection,
                 documentsInstance: this.documents,
             });
@@ -39,19 +36,19 @@ class ServerInstance {
             this.definitionProvider = new DefinitionProvider(
                 this.connection,
                 this.documents,
-                this.rootUri,
+                this.workspaceFolders,
                 this.indexer
             );
             this.completionProvider = new CompletionProvider(
                 this.connection,
                 this.documents,
-                this.rootUri,
+                this.workspaceFolders,
                 this.indexer
             );
             this.referencesProvider = new ReferencesProvider(
                 this.connection,
                 this.documents,
-                this.rootUri,
+                this.workspaceFolders,
                 this.indexer
             );
 
