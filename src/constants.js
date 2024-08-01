@@ -8,7 +8,7 @@ const JSCONFIG = {
         compilerOptions: {
             checkJs: true,
             allowJs: true,
-            jsx: "react",
+            jsx: "react-jsx",
             baseUrl: ".",
             paths: {
                 ["/*"]: ["./*"],
